@@ -1,17 +1,29 @@
 import assert from 'node:assert/strict';
-import { defaultScenario, generateSolution, parseTime, scoreSolution, shiftPaidMinutes, SHIFT_LIBRARY } from '../src/engine.js';
+import {
+  computeMetricsFromSchedule,
+  defaultScenario,
+  defaultSchedule,
+  minutesBetween,
+  parseTime,
+  shiftPaidMinutes,
+  targetHoursForMode
+} from '../src/engine.js';
 
 assert.equal(parseTime('00:00'), 0);
 assert.equal(parseTime('07:30'), 450);
-
-assert.equal(shiftPaidMinutes(SHIFT_LIBRARY.M, 45), 435);
-assert.equal(shiftPaidMinutes(SHIFT_LIBRARY.N, 60), 420);
+assert.equal(minutesBetween('23:00', '07:00', true), 480);
 
 const scenario = defaultScenario();
-const solution = generateSolution(scenario, { modelId: '5x8' });
-assert.ok(solution.assignments.length > 0, 'Debe crear asignaciones');
-assert.ok(solution.metrics.coverage.size > 0, 'Debe calcular cobertura');
-assert.ok(Number.isFinite(solution.score), 'Score debe ser numérico');
-assert.equal(solution.score, scoreSolution(solution.metrics));
+assert.equal(shiftPaidMinutes(scenario.shifts[0], scenario.breakMinutes), 450);
+assert.equal(targetHoursForMode('weekly42'), 42);
+
+const schedule = defaultSchedule(scenario);
+const metrics = computeMetricsFromSchedule(scenario, schedule, 60);
+
+assert.ok(metrics.coverage.size > 0, 'Debe calcular cobertura');
+assert.ok(metrics.required.size > 0, 'Debe calcular requerimientos');
+assert.ok(metrics.hoursSummary.length === scenario.people.length, 'Debe incluir horas por persona');
+assert.equal(metrics.bucketCount, 168);
+assert.ok(Number.isFinite(metrics.fairnessStdDev), 'Fairness debe ser numérico');
 
 console.log('engine tests ok');
