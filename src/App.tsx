@@ -4,6 +4,7 @@ import { FiltersPanel } from './components/FiltersPanel';
 import { HeaderBar } from './components/HeaderBar';
 import { ShiftModal } from './components/ShiftModal';
 import { WeekGrid } from './components/WeekGrid';
+import { SchedulesPage } from './components/schedules/SchedulesPage';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
 import { buildFunctionMap, buildPersonMap, buildRoleMap, getShiftRole } from './lib/relations';
@@ -20,6 +21,7 @@ const DEFAULT_VIEW_STATE: AppliedViewState = {
 };
 
 function App() {
+  const [view, setView] = useState<'week' | 'schedules'>('week');
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [data, setData] = useState(() => loadData(todayWeekStart));
   const [appliedState, setAppliedState] = useState<AppliedViewState>(() => loadViewStatePreference());
@@ -83,34 +85,40 @@ function App() {
         onNextWeek={() => setWeekStart(addDays(weekStart, 7))}
         onAddShift={() => { setEditing(null); setModalOpen(true); }}
         onOpenFilters={() => setFiltersOpen(true)}
+        view={view}
+        onChangeView={setView}
       />
 
-      <main className="dashboard-layout">
-        <section className="main-column">
-          <CoverageCard
-            roles={data.roles}
-            functions={data.functions}
-            people={data.people}
-            shifts={visibleShifts}
-            weekStart={weekStart}
-            scale={appliedState.timeScale}
-            activePeople={activePeople}
-            onFocusBlock={(dayIndex, blockIndex) => setFocusBlock({ dayIndex, blockIndex })}
-          />
-          <WeekGrid
-            weekStart={weekStart}
-            shifts={visibleShifts}
-            people={data.people}
-            functions={data.functions}
-            roles={data.roles}
-            scale={appliedState.timeScale}
-            coverageTotals={coverageTotals}
-            onShiftClick={(shift) => { setEditing(shift); setModalOpen(true); }}
-            focusBlock={focusBlock}
-            shiftLabelMode={appliedState.shiftLabelMode}
-          />
-        </section>
-      </main>
+      {view === 'week' ? (
+        <main className="dashboard-layout">
+          <section className="main-column">
+            <CoverageCard
+              roles={data.roles}
+              functions={data.functions}
+              people={data.people}
+              shifts={visibleShifts}
+              weekStart={weekStart}
+              scale={appliedState.timeScale}
+              activePeople={activePeople}
+              onFocusBlock={(dayIndex, blockIndex) => setFocusBlock({ dayIndex, blockIndex })}
+            />
+            <WeekGrid
+              weekStart={weekStart}
+              shifts={visibleShifts}
+              people={data.people}
+              functions={data.functions}
+              roles={data.roles}
+              scale={appliedState.timeScale}
+              coverageTotals={coverageTotals}
+              onShiftClick={(shift) => { setEditing(shift); setModalOpen(true); }}
+              focusBlock={focusBlock}
+              shiftLabelMode={appliedState.shiftLabelMode}
+            />
+          </section>
+        </main>
+      ) : (
+        <SchedulesPage people={data.people} functions={data.functions} />
+      )}
 
       <FiltersPanel
         roles={data.roles}

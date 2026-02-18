@@ -60,3 +60,31 @@ export type AppliedViewState = AppliedFilters & {
   timeScale: TimeScale;
   shiftLabelMode: ShiftLabelMode;
 };
+
+
+export type ScheduleDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export type ScheduleDaySlot = {
+  start: string | null;
+  end: string | null;
+};
+
+export type ScheduleTemplate = {
+  id: string;
+  name: string;
+  days: Record<ScheduleDayKey, ScheduleDaySlot>;
+};
+
+export type PersonSchedule = {
+  personId: string;
+  templateId: string | null;
+};
+
+export type ScheduleOverride = {
+  id: string;
+  personId: string;
+  dateISO: string;
+  start: string | null;
+  end: string | null;
+  note?: string;
+};
