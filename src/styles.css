@@ -81,10 +81,10 @@ select, input {
 .chip.muted { opacity: .45; }
 .chip.active { box-shadow: inset 0 0 0 1px currentColor; }
 .heatbar { margin-top: 10px; width: 100%; }
-.heatbar-line { display: flex; flex-wrap: nowrap; overflow: hidden; width: 100%; gap: 1px; align-items: center; }
-.heatbar-segment { border: 0; height: 22px; background: #2563eb; border-radius: 2px; padding: 0; flex: 0 0 auto; }
+.heatbar-line { display: flex; flex-wrap: nowrap; overflow: hidden; width: 100%; max-width: 100%; gap: 1px; align-items: center; }
+.heatbar-segment { border: 0; height: 22px; background: #2563eb; border-radius: 2px; padding: 0; margin: 0; display: block; line-height: 0; min-inline-size: 0; }
 .coverage-rows { margin-top: 10px; display: grid; gap: 8px; }
-.coverage-row { width: 100%; }
+.coverage-row { width: 100%; min-width: 0; overflow: hidden; }
 .coverage-row .heatbar-segment { height: 10px; }
 .function-coverage-group { display: grid; gap: 6px; }
 .function-coverage-group > p { margin: 0; font-size: 12px; font-weight: 600; color: #64748b; }

@@ -104,8 +104,8 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelect }: Heatb
           key={`${bar.dayIndex}-${bar.blockIndex}-${index}`}
           className="heatbar-segment"
           style={{
-            width: BAR_WIDTH,
-            minWidth: BAR_WIDTH,
+            flex: '1 1 0',
+            minWidth: 0,
             opacity: bar.value === 0 ? 0.1 : 0.15 + (bar.value / Math.max(maxValue, 1)) * 0.85,
             backgroundColor: color
           }}
