@@ -259,6 +259,7 @@ export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scal
               const rowMax = Math.max(...weekBlocks.map((block) => block.byRole[role.id] || 0), 1);
               return (
                 <div key={role.id} className="coverage-row">
+                  <p className="coverage-mini-title">{role.nombre}</p>
                   <HeatbarRow
                     blocks={weekBlocks}
                     color={role.color || '#60a5fa'}
@@ -284,28 +285,24 @@ export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scal
             )))}
           </div>
           <div className="coverage-rows">
-            {roles.map((role) => (
-              <div key={role.id} className="function-coverage-group">
-                <p>{role.nombre}</p>
-                {(groupedFunctions[role.id] || []).map((fn) => {
-                  const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
-                  return (
-                    <div key={fn.id} className="coverage-row">
-                      <HeatbarRow
-                        blocks={weekBlocks}
-                        color={role.color || '#60a5fa'}
-                        maxValue={rowMax}
-                        valueFromBlock={(block) => block.byFunction[fn.id] || 0}
-                        onSelect={(bar) => {
-                          const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
-                          showPopover(bar, fn.nombre, source.byFunction[fn.id] || 0, roleById.get(fn.roleId)?.nombre);
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+            {roles.flatMap((role) => (groupedFunctions[role.id] || []).map((fn) => {
+              const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
+              return (
+                <div key={fn.id} className="coverage-row">
+                  <p className="coverage-mini-title">{fn.nombre}</p>
+                  <HeatbarRow
+                    blocks={weekBlocks}
+                    color={role.color || '#60a5fa'}
+                    maxValue={rowMax}
+                    valueFromBlock={(block) => block.byFunction[fn.id] || 0}
+                    onSelect={(bar) => {
+                      const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
+                      showPopover(bar, fn.nombre, source.byFunction[fn.id] || 0, roleById.get(fn.roleId)?.nombre);
+                    }}
+                  />
+                </div>
+              );
+            }))}
           </div>
         </>
       )}

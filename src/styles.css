@@ -84,10 +84,9 @@ select, input {
 .heatbar-line { display: flex; flex-wrap: nowrap; overflow: hidden; width: 100%; max-width: 100%; gap: 1px; align-items: center; }
 .heatbar-segment { border: 0; height: 22px; background: #2563eb; border-radius: 2px; padding: 0; margin: 0; display: block; line-height: 0; min-inline-size: 0; }
 .coverage-rows { margin-top: 10px; display: grid; gap: 8px; }
-.coverage-row { width: 100%; min-width: 0; overflow: hidden; }
+.coverage-row { width: 100%; min-width: 0; overflow: hidden; display: grid; gap: 4px; }
+.coverage-mini-title { margin: 0; font-size: 12px; font-weight: 600; color: #64748b; }
 .coverage-row .heatbar-segment { height: 10px; }
-.function-coverage-group { display: grid; gap: 6px; }
-.function-coverage-group > p { margin: 0; font-size: 12px; font-weight: 600; color: #64748b; }
 .coverage-popover {
   position: absolute;
   left: 50%;
