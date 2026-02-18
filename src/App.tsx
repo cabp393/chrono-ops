@@ -8,8 +8,9 @@ import { SchedulesPage } from './components/schedules/SchedulesPage';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
 import { buildFunctionMap, buildPersonMap, buildRoleMap, getShiftRole } from './lib/relations';
-import { loadData, loadViewStatePreference, saveData, saveViewStatePreference } from './lib/storage';
+import { loadViewStatePreference, saveViewStatePreference } from './lib/storage';
 import type { AppliedViewState, Shift } from './types';
+import { useScheduleStore } from './context/ScheduleStore';
 
 const todayWeekStart = startOfWeekMonday(new Date());
 const DEFAULT_VIEW_STATE: AppliedViewState = {
@@ -23,7 +24,7 @@ const DEFAULT_VIEW_STATE: AppliedViewState = {
 function App() {
   const [view, setView] = useState<'week' | 'schedules'>('week');
   const [weekStart, setWeekStart] = useState(todayWeekStart);
-  const [data, setData] = useState(() => loadData(todayWeekStart));
+  const { appData: data, setShifts } = useScheduleStore();
   const [appliedState, setAppliedState] = useState<AppliedViewState>(() => loadViewStatePreference());
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
@@ -64,9 +65,7 @@ function App() {
   const coverageTotals = Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]));
 
   const persist = (nextShifts: Shift[]) => {
-    const next = { ...data, shifts: nextShifts };
-    setData(next);
-    saveData(next);
+    setShifts(nextShifts);
   };
 
   const duplicateShift = (shift: Shift, dayOffset = 1) => {

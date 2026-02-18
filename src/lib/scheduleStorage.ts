@@ -6,7 +6,7 @@ const TEMPLATES_KEY = 'shiftboard_templates';
 const PERSON_SCHEDULES_KEY = 'shiftboard_personSchedules';
 const OVERRIDES_KEY = 'shiftboard_overrides';
 
-type ScheduleData = {
+export type ScheduleData = {
   templates: ScheduleTemplate[];
   personSchedules: PersonSchedule[];
   overrides: ScheduleOverride[];
