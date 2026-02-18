@@ -47,3 +47,8 @@ export type AppliedFilters = {
   roleIds: string[];
   functionIds: string[];
 };
+
+export type AppliedViewState = AppliedFilters & {
+  timeScale: TimeScale;
+  shiftLabelMode: ShiftLabelMode;
+};

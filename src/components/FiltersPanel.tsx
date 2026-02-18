@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TIME_SCALE_OPTIONS, scaleLabel } from '../lib/timeScale';
-import type { AppliedFilters, Function, Person, Role, ShiftLabelMode, TimeScale } from '../types';
+import type { AppliedViewState, Function, Person, Role, ShiftLabelMode, TimeScale } from '../types';
 import { FilterFooter } from './filters/FilterFooter';
 import { FilterPill } from './filters/FilterPill';
 import { FilterSection } from './filters/FilterSection';
@@ -9,39 +9,38 @@ type Props = {
   roles: Role[];
   functions: Function[];
   people: Person[];
-  appliedFilters: AppliedFilters;
-  scale: TimeScale;
-  shiftLabelMode: ShiftLabelMode;
+  appliedState: AppliedViewState;
   open: boolean;
   onClose: () => void;
-  onApplyFilters: (filters: AppliedFilters) => void;
-  onResetFilters: () => void;
-  onShiftLabelModeChange: (mode: ShiftLabelMode) => void;
-  onScaleChange: (value: TimeScale) => void;
+  onApply: (nextState: AppliedViewState) => void;
+  onReset: () => void;
 };
 
-const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [] };
+const DEFAULT_VIEW_STATE: AppliedViewState = {
+  timeScale: 60,
+  shiftLabelMode: 'function',
+  searchText: '',
+  roleIds: [],
+  functionIds: []
+};
+
 const norm = (value: string) => value.trim().toLowerCase();
 
 export const FiltersPanel = ({
   roles,
   functions,
   people,
-  appliedFilters,
-  scale,
-  shiftLabelMode,
+  appliedState,
   open,
   onClose,
-  onApplyFilters,
-  onResetFilters,
-  onShiftLabelModeChange,
-  onScaleChange
+  onApply,
+  onReset
 }: Props) => {
-  const [draft, setDraft] = useState<AppliedFilters>(appliedFilters);
+  const [draftState, setDraftState] = useState<AppliedViewState>(appliedState);
 
   useEffect(() => {
-    setDraft(appliedFilters);
-  }, [appliedFilters]);
+    if (open) setDraftState(appliedState);
+  }, [appliedState, open]);
 
   useEffect(() => {
     document.body.classList.toggle('drawer-open', open);
@@ -50,8 +49,8 @@ export const FiltersPanel = ({
 
   const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
 
-  const draftSearch = norm(draft.searchText);
-  const roleScope = draft.roleIds.length > 0 ? new Set(draft.roleIds) : null;
+  const draftSearch = norm(draftState.searchText);
+  const roleScope = draftState.roleIds.length > 0 ? new Set(draftState.roleIds) : null;
 
   const peopleMatchingSearch = useMemo(() => {
     if (!draftSearch) return people;
@@ -89,32 +88,38 @@ export const FiltersPanel = ({
   }, [functions]);
 
   const visibleRoleIds = roleScope ? Array.from(roleScope) : roles.map((role) => role.id);
-  const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(appliedFilters);
+  const hasUnsavedChanges = JSON.stringify(draftState) !== JSON.stringify(appliedState);
 
   const toggleRole = (id: string) => {
-    setDraft((prev) => ({
+    setDraftState((prev) => ({
       ...prev,
       roleIds: prev.roleIds.includes(id) ? prev.roleIds.filter((item) => item !== id) : [...prev.roleIds, id]
     }));
   };
 
   const toggleFunction = (id: string) => {
-    setDraft((prev) => ({
+    setDraftState((prev) => ({
       ...prev,
       functionIds: prev.functionIds.includes(id) ? prev.functionIds.filter((item) => item !== id) : [...prev.functionIds, id]
     }));
+  };
+
+  const closeWithoutApply = () => {
+    setDraftState(appliedState);
+    onClose();
   };
 
   if (!open) return null;
 
   return (
     <div className="filters-drawer" role="presentation">
-      <button type="button" className="filters-overlay" aria-label="Cerrar panel de filtros" onClick={onClose} />
+      <button type="button" className="filters-overlay" aria-label="Cerrar panel de filtros" onClick={closeWithoutApply} />
 
       <aside className="filters-panel open" role="dialog" aria-modal="true" aria-label="Panel de filtros" onClick={(event) => event.stopPropagation()}>
         <div className="filters-head">
           <h3>Panel</h3>
-          <button type="button" className="ghost" onClick={onClose}>Cerrar</button>
+          {hasUnsavedChanges && <span className="pending-badge">Cambios sin aplicar</span>}
+          <button type="button" className="ghost" onClick={closeWithoutApply}>Cerrar</button>
         </div>
 
         <div className="filters-scroll">
@@ -126,8 +131,8 @@ export const FiltersPanel = ({
                   <button
                     key={option}
                     type="button"
-                    className={`filter-pill ${scale === option ? 'active' : ''}`}
-                    onClick={() => onScaleChange(option)}
+                    className={`filter-pill ${draftState.timeScale === option ? 'active' : ''}`}
+                    onClick={() => setDraftState((prev) => ({ ...prev, timeScale: option as TimeScale }))}
                   >
                     <span>{scaleLabel(option).replace(' min', 'm').replace(' h', 'h')}</span>
                   </button>
@@ -140,15 +145,15 @@ export const FiltersPanel = ({
               <div className="pill-grid">
                 <button
                   type="button"
-                  className={`filter-pill ${shiftLabelMode === 'person' ? 'active' : ''}`}
-                  onClick={() => onShiftLabelModeChange('person')}
+                  className={`filter-pill ${draftState.shiftLabelMode === 'person' ? 'active' : ''}`}
+                  onClick={() => setDraftState((prev) => ({ ...prev, shiftLabelMode: 'person' as ShiftLabelMode }))}
                 >
                   <span>Nombre</span>
                 </button>
                 <button
                   type="button"
-                  className={`filter-pill ${shiftLabelMode === 'function' ? 'active' : ''}`}
-                  onClick={() => onShiftLabelModeChange('function')}
+                  className={`filter-pill ${draftState.shiftLabelMode === 'function' ? 'active' : ''}`}
+                  onClick={() => setDraftState((prev) => ({ ...prev, shiftLabelMode: 'function' as ShiftLabelMode }))}
                 >
                   <span>Función</span>
                 </button>
@@ -166,7 +171,7 @@ export const FiltersPanel = ({
                     label={role.nombre}
                     count={roleCounts[role.id] || 0}
                     color={role.color}
-                    active={draft.roleIds.includes(role.id)}
+                    active={draftState.roleIds.includes(role.id)}
                     onClick={() => toggleRole(role.id)}
                   />
                 ))}
@@ -190,7 +195,7 @@ export const FiltersPanel = ({
                             label={fn.nombre}
                             count={functionCounts[fn.id] || 0}
                             color={role?.color}
-                            active={draft.functionIds.includes(fn.id)}
+                            active={draftState.functionIds.includes(fn.id)}
                             onClick={() => toggleFunction(fn.id)}
                           />
                         ))}
@@ -204,17 +209,17 @@ export const FiltersPanel = ({
         </div>
 
         <FilterFooter
-          searchText={draft.searchText}
-          onSearchChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
-          onSearchClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
+          searchText={draftState.searchText}
+          onSearchChange={(value) => setDraftState((prev) => ({ ...prev, searchText: value }))}
+          onSearchClear={() => setDraftState((prev) => ({ ...prev, searchText: '' }))}
           disabledApply={!hasUnsavedChanges}
           onApply={() => {
-            onApplyFilters(draft);
+            onApply(draftState);
             onClose();
           }}
           onReset={() => {
-            setDraft(EMPTY_FILTERS);
-            onResetFilters();
+            setDraftState(DEFAULT_VIEW_STATE);
+            onReset();
             onClose();
           }}
         />

@@ -7,25 +7,22 @@ import { WeekGrid } from './components/WeekGrid';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
 import { buildFunctionMap, buildPersonMap, buildRoleMap, getShiftRole } from './lib/relations';
-import {
-  loadData,
-  loadShiftLabelModePreference,
-  loadTimeScalePreference,
-  saveData,
-  saveShiftLabelModePreference,
-  saveTimeScalePreference
-} from './lib/storage';
-import type { AppliedFilters, Shift, ShiftLabelMode, TimeScale } from './types';
+import { loadData, loadViewStatePreference, saveData, saveViewStatePreference } from './lib/storage';
+import type { AppliedViewState, Shift } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
-const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [] };
+const DEFAULT_VIEW_STATE: AppliedViewState = {
+  timeScale: 60,
+  shiftLabelMode: 'function',
+  searchText: '',
+  roleIds: [],
+  functionIds: []
+};
 
 function App() {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [data, setData] = useState(() => loadData(todayWeekStart));
-  const [scale, setScale] = useState<TimeScale>(() => loadTimeScalePreference());
-  const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
-  const [shiftLabelMode, setShiftLabelMode] = useState<ShiftLabelMode>(() => loadShiftLabelModePreference());
+  const [appliedState, setAppliedState] = useState<AppliedViewState>(() => loadViewStatePreference());
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
   const [focusBlock, setFocusBlock] = useState<{ dayIndex: number; blockIndex: number } | null>(null);
@@ -36,15 +33,15 @@ function App() {
   const rolesById = useMemo(() => buildRoleMap(data.roles), [data.roles]);
 
   const filteredPersonIds = useMemo(() => {
-    const search = filters.searchText.trim().toLowerCase();
+    const search = appliedState.searchText.trim().toLowerCase();
     return new Set(data.people.filter((person) => {
       const fn = functionsById.get(person.functionId);
-      const roleOk = filters.roleIds.length === 0 || (fn ? filters.roleIds.includes(fn.roleId) : false);
-      const functionOk = filters.functionIds.length === 0 || filters.functionIds.includes(person.functionId);
+      const roleOk = appliedState.roleIds.length === 0 || (fn ? appliedState.roleIds.includes(fn.roleId) : false);
+      const functionOk = appliedState.functionIds.length === 0 || appliedState.functionIds.includes(person.functionId);
       const searchOk = !search || person.nombre.toLowerCase().includes(search) || (fn?.nombre.toLowerCase().includes(search) ?? false);
       return roleOk && functionOk && searchOk;
     }).map((person) => person.id));
-  }, [data.people, functionsById, filters]);
+  }, [data.people, functionsById, appliedState]);
 
   const visibleShifts = useMemo(() => data.shifts.filter((shift) => {
     const start = new Date(shift.startISO);
@@ -55,19 +52,9 @@ function App() {
   const shiftRoleId = (shift: Shift) => getShiftRole(shift, peopleById, functionsById, rolesById)?.id;
 
   const coverage = useMemo(
-    () => calculateCoverage(weekStart, visibleShifts, data.roles, scale, shiftRoleId),
-    [weekStart, visibleShifts, data.roles, scale, peopleById, functionsById, rolesById]
+    () => calculateCoverage(weekStart, visibleShifts, data.roles, appliedState.timeScale, shiftRoleId),
+    [weekStart, visibleShifts, data.roles, appliedState.timeScale, peopleById, functionsById, rolesById]
   );
-
-  const roleTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    visibleShifts.forEach((shift) => {
-      const roleId = shiftRoleId(shift);
-      if (!roleId) return;
-      totals[roleId] = (totals[roleId] || 0) + 1;
-    });
-    return totals;
-  }, [visibleShifts, peopleById, functionsById, rolesById]);
 
   const activePeople = useMemo(() => new Set(visibleShifts.map((shift) => shift.personId)).size, [visibleShifts]);
 
@@ -101,10 +88,12 @@ function App() {
         <section className="main-column">
           <CoverageCard
             roles={data.roles}
-            coverage={coverage}
+            functions={data.functions}
+            people={data.people}
+            shifts={visibleShifts}
+            weekStart={weekStart}
+            scale={appliedState.timeScale}
             activePeople={activePeople}
-            roleTotals={roleTotals}
-            activeRoleIds={new Set(filters.roleIds)}
             onFocusBlock={(dayIndex, blockIndex) => setFocusBlock({ dayIndex, blockIndex })}
           />
           <WeekGrid
@@ -113,11 +102,11 @@ function App() {
             people={data.people}
             functions={data.functions}
             roles={data.roles}
-            scale={scale}
+            scale={appliedState.timeScale}
             coverageTotals={coverageTotals}
             onShiftClick={(shift) => { setEditing(shift); setModalOpen(true); }}
             focusBlock={focusBlock}
-            shiftLabelMode={shiftLabelMode}
+            shiftLabelMode={appliedState.shiftLabelMode}
           />
         </section>
       </main>
@@ -126,20 +115,16 @@ function App() {
         roles={data.roles}
         functions={data.functions}
         people={data.people}
-        appliedFilters={filters}
-        scale={scale}
+        appliedState={appliedState}
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        onApplyFilters={setFilters}
-        onResetFilters={() => setFilters(EMPTY_FILTERS)}
-        shiftLabelMode={shiftLabelMode}
-        onShiftLabelModeChange={(mode) => {
-          setShiftLabelMode(mode);
-          saveShiftLabelModePreference(mode);
+        onApply={(nextState) => {
+          setAppliedState(nextState);
+          saveViewStatePreference(nextState);
         }}
-        onScaleChange={(nextScale) => {
-          setScale(nextScale);
-          saveTimeScalePreference(nextScale);
+        onReset={() => {
+          setAppliedState(DEFAULT_VIEW_STATE);
+          saveViewStatePreference(DEFAULT_VIEW_STATE);
         }}
       />
 

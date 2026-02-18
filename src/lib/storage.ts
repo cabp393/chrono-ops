@@ -1,4 +1,4 @@
-import type { AppData, Function, Person, Role, Shift, ShiftLabelMode } from '../types';
+import type { AppliedViewState, AppData, Function, Person, Role, Shift, ShiftLabelMode } from '../types';
 import { clampScale } from './timeScale';
 import type { TimeScale } from '../types';
 
@@ -6,6 +6,7 @@ const STORAGE_KEY = 'shiftboard:data:v2';
 const LEGACY_STORAGE_KEY = 'shiftboard:data:v1';
 const VIEW_SCALE_KEY = 'shiftboard:view:timeScale';
 const SHIFT_LABEL_MODE_KEY = 'shiftboard:view:shiftLabelMode';
+const VIEW_STATE_KEY = 'shiftboard:view:state:v1';
 
 type LegacyPerson = {
   id: string;
@@ -196,9 +197,40 @@ export const saveTimeScalePreference = (scale: TimeScale) => {
 export const loadShiftLabelModePreference = (): ShiftLabelMode => {
   const raw = localStorage.getItem(SHIFT_LABEL_MODE_KEY);
   if (raw === 'person' || raw === 'function') return raw;
-  return 'person';
+  return 'function';
 };
 
 export const saveShiftLabelModePreference = (mode: ShiftLabelMode) => {
   localStorage.setItem(SHIFT_LABEL_MODE_KEY, mode);
+};
+
+const normalizeViewState = (value: Partial<AppliedViewState> | null | undefined): AppliedViewState => ({
+  timeScale: clampScale(Number(value?.timeScale ?? 60)),
+  shiftLabelMode: value?.shiftLabelMode === 'person' ? 'person' : 'function',
+  roleIds: Array.isArray(value?.roleIds) ? value!.roleIds.filter((item): item is string => typeof item === 'string') : [],
+  functionIds: Array.isArray(value?.functionIds) ? value!.functionIds.filter((item): item is string => typeof item === 'string') : [],
+  searchText: typeof value?.searchText === 'string' ? value.searchText : ''
+});
+
+export const loadViewStatePreference = (): AppliedViewState => {
+  const raw = localStorage.getItem(VIEW_STATE_KEY);
+  if (raw) {
+    try {
+      return normalizeViewState(JSON.parse(raw) as Partial<AppliedViewState>);
+    } catch {
+      return normalizeViewState(null);
+    }
+  }
+
+  return normalizeViewState({
+    timeScale: loadTimeScalePreference(),
+    shiftLabelMode: loadShiftLabelModePreference()
+  });
+};
+
+export const saveViewStatePreference = (state: AppliedViewState) => {
+  const normalized = normalizeViewState(state);
+  localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(normalized));
+  saveTimeScalePreference(normalized.timeScale);
+  saveShiftLabelModePreference(normalized.shiftLabelMode);
 };

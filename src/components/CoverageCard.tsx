@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CoverageBlock, Role } from '../types';
 import { formatDayHeader, formatHour } from '../lib/dateUtils';
+import type { Function, Person, Role, Shift, TimeScale } from '../types';
 
-type DayCoverage = {
-  dayKey: string;
+type WeekBlock = {
+  start: Date;
+  end: Date;
   dayDate: Date;
-  blocks: CoverageBlock[];
-};
-
-type WeekBlock = CoverageBlock & {
   dayIndex: number;
   blockIndex: number;
-  dayDate: Date;
+  total: number;
+  byRole: Record<string, number>;
+  byFunction: Record<string, number>;
 };
 
 type SampledBar = {
@@ -31,10 +30,12 @@ type HeatbarRowProps = {
 
 type Props = {
   roles: Role[];
-  coverage: DayCoverage[];
+  functions: Function[];
+  people: Person[];
+  shifts: Shift[];
+  weekStart: Date;
+  scale: TimeScale;
   activePeople: number;
-  roleTotals: Record<string, number>;
-  activeRoleIds: Set<string>;
   onFocusBlock: (dayIndex: number, blockIndex: number) => void;
 };
 
@@ -115,40 +116,119 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelect }: Heatb
   );
 };
 
-export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, activeRoleIds, onFocusBlock }: Props) => {
-  const [view, setView] = useState<'total' | 'role'>('total');
+export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scale, activePeople, onFocusBlock }: Props) => {
+  const [view, setView] = useState<'role' | 'function'>('role');
   const [popover, setPopover] = useState<{ title: string; details: string } | null>(null);
 
-  const weekBlocks = useMemo(
-    () => coverage.flatMap((day, dayIndex) => day.blocks.map((block, blockIndex) => ({ ...block, dayIndex, blockIndex, dayDate: day.dayDate }))),
-    [coverage]
-  );
+  const functionById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
+  const personById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
 
-  const roleNameById = useMemo(
-    () => new Map(roles.map((role) => [role.id, role.nombre])),
-    [roles]
-  );
+  const weekBlocks = useMemo(() => {
+    const totalBlocks = (24 * 60) / scale;
+    const blockMs = scale * 60 * 1000;
 
-  const maxTotal = Math.max(...weekBlocks.map((b) => b.total), 1);
-
-  const compactRoleLabel = (name: string, count: number) => {
-    const clean = name.trim();
-    const short = clean.length > 10 ? `${clean.slice(0, 1)} ${count}` : `${clean} ${count}`;
-    return clean.length > 14 ? short : `${clean} ${count}`;
-  };
-
-  const showPopover = (bar: SampledBar, roleId?: string) => {
-    const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
-    const roleLines = Object.entries(source.byRole)
-      .map(([id, count]) => `${roleNameById.get(id) ?? id}: ${count}`)
-      .join(' · ');
-    const roleLine = roleId ? `${roleNameById.get(roleId) ?? roleId}: ${source.byRole[roleId] || 0}` : '';
-
-    setPopover({
-      title: `${formatDayHeader(source.dayDate)} · ~${formatHour(source.start)}`,
-      details: `Total: ${source.total}${roleLine ? ` · ${roleLine}` : ''}${roleLines ? `\n${roleLines}` : ''}`
+    const matrix = Array.from({ length: 7 }, (_, dayIndex) => {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(weekStart.getDate() + dayIndex);
+      dayDate.setHours(0, 0, 0, 0);
+      return Array.from({ length: totalBlocks }, (_, blockIndex) => ({
+        start: new Date(dayDate.getTime() + blockIndex * blockMs),
+        end: new Date(dayDate.getTime() + (blockIndex + 1) * blockMs),
+        dayDate,
+        dayIndex,
+        blockIndex,
+        totalSet: new Set<string>(),
+        byRoleSet: {} as Record<string, Set<string>>,
+        byFunctionSet: {} as Record<string, Set<string>>
+      }));
     });
 
+    shifts.forEach((shift) => {
+      const shiftStart = new Date(shift.startISO).getTime();
+      const shiftEnd = new Date(shift.endISO).getTime();
+      if (shiftEnd <= shiftStart) return;
+      const person = personById.get(shift.personId);
+      if (!person) return;
+      const fn = functionById.get(person.functionId);
+      if (!fn) return;
+
+      for (let dayIndex = 0; dayIndex < matrix.length; dayIndex += 1) {
+        const dayStart = matrix[dayIndex][0].dayDate.getTime();
+        const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+        if (shiftEnd <= dayStart || shiftStart >= dayEnd) continue;
+
+        const overlapStart = Math.max(shiftStart, dayStart);
+        const overlapEnd = Math.min(shiftEnd, dayEnd);
+        const startIdx = Math.floor((overlapStart - dayStart) / blockMs);
+        const endIdx = Math.ceil((overlapEnd - dayStart) / blockMs) - 1;
+
+        for (let i = Math.max(0, startIdx); i <= Math.min(totalBlocks - 1, endIdx); i += 1) {
+          const block = matrix[dayIndex][i];
+          block.totalSet.add(shift.personId);
+          block.byRoleSet[fn.roleId] = block.byRoleSet[fn.roleId] || new Set<string>();
+          block.byFunctionSet[fn.id] = block.byFunctionSet[fn.id] || new Set<string>();
+          block.byRoleSet[fn.roleId].add(shift.personId);
+          block.byFunctionSet[fn.id].add(shift.personId);
+        }
+      }
+    });
+
+    return matrix.flat().map((block) => ({
+      start: block.start,
+      end: block.end,
+      dayDate: block.dayDate,
+      dayIndex: block.dayIndex,
+      blockIndex: block.blockIndex,
+      total: block.totalSet.size,
+      byRole: Object.fromEntries(Object.entries(block.byRoleSet).map(([id, set]) => [id, set.size])),
+      byFunction: Object.fromEntries(Object.entries(block.byFunctionSet).map(([id, set]) => [id, set.size]))
+    }));
+  }, [shifts, weekStart, scale, personById, functionById]);
+
+  const roleTotals = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const seen = new Set<string>();
+    shifts.forEach((shift) => {
+      if (seen.has(shift.personId)) return;
+      const person = personById.get(shift.personId);
+      const fn = person ? functionById.get(person.functionId) : undefined;
+      if (!fn) return;
+      seen.add(shift.personId);
+      counts[fn.roleId] = (counts[fn.roleId] || 0) + 1;
+    });
+    return counts;
+  }, [shifts, personById, functionById]);
+
+  const functionTotals = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const seen = new Set<string>();
+    shifts.forEach((shift) => {
+      if (seen.has(shift.personId)) return;
+      const person = personById.get(shift.personId);
+      if (!person) return;
+      seen.add(shift.personId);
+      counts[person.functionId] = (counts[person.functionId] || 0) + 1;
+    });
+    return counts;
+  }, [shifts, personById]);
+
+  const groupedFunctions = useMemo(() => {
+    const byRole: Record<string, Function[]> = {};
+    functions.forEach((fn) => {
+      byRole[fn.roleId] = byRole[fn.roleId] || [];
+      byRole[fn.roleId].push(fn);
+    });
+    return byRole;
+  }, [functions]);
+
+  const roleById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
+
+  const showPopover = (bar: SampledBar, entityName: string, value: number, roleName?: string) => {
+    const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
+    setPopover({
+      title: `${entityName} · ${formatDayHeader(source.dayDate)} · ${formatHour(source.start)}-${formatHour(source.end)}`,
+      details: `Cobertura: ${Math.round(value)} personas${roleName ? ` · Rol: ${roleName}` : ''}`
+    });
     onFocusBlock(bar.dayIndex, bar.blockIndex);
   };
 
@@ -160,65 +240,76 @@ export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, active
           <p>{activePeople} personas activas</p>
         </div>
         <div className="segmented">
-          <button className={view === 'total' ? 'active' : ''} onClick={() => setView('total')}>Total</button>
-          <button className={view === 'role' ? 'active' : ''} onClick={() => setView('role')}>Por rol</button>
+          <button className={view === 'role' ? 'active' : ''} onClick={() => setView('role')}>Rol</button>
+          <button className={view === 'function' ? 'active' : ''} onClick={() => setView('function')}>Función</button>
         </div>
       </div>
 
-      {view === 'role' && (
-        <div className="chip-row">
-          {roles.map((role) => {
-            const active = activeRoleIds.size === 0 || activeRoleIds.has(role.id);
-            return (
-              <span key={role.id} className={`chip ${active ? 'active' : 'muted'}`} style={{ borderColor: role.color, color: role.color }}>
+      {view === 'role' ? (
+        <>
+          <div className="chip-row">
+            {roles.map((role) => (
+              <span key={role.id} className="chip" style={{ borderColor: role.color, color: role.color }}>
                 {role.nombre}: {roleTotals[role.id] || 0}
               </span>
-            );
-          })}
-        </div>
-      )}
-
-      {view === 'total' ? (
-        <div className="role-rows total-row-wrap">
-          <div className="role-row total-row">
-            <span className="chip role-chip total-row-label" aria-hidden="true">Total</span>
-            <div className="role-row-bars">
-              <HeatbarRow
-                blocks={weekBlocks}
-                color="#2563eb"
-                maxValue={maxTotal}
-                valueFromBlock={(block) => block.total}
-                onSelect={(bar) => showPopover(bar)}
-              />
-            </div>
+            ))}
           </div>
-        </div>
-      ) : (
-        <div className="role-rows">
-          {roles.map((role) => {
-            const rowMax = Math.max(
-              ...weekBlocks.map((block) => block.byRole[role.id] || 0),
-              1
-            );
-            return (
-              <div key={role.id} className="role-row">
-                <span className="chip role-chip" style={{ borderColor: role.color, color: role.color }} title={`${role.nombre} ${roleTotals[role.id] || 0}`}>
-                  {compactRoleLabel(role.nombre, roleTotals[role.id] || 0)}
-                </span>
-                <div className="role-row-bars">
+          <div className="coverage-rows">
+            {roles.map((role) => {
+              const rowMax = Math.max(...weekBlocks.map((block) => block.byRole[role.id] || 0), 1);
+              return (
+                <div key={role.id} className="coverage-row">
                   <HeatbarRow
                     blocks={weekBlocks}
                     color={role.color || '#60a5fa'}
                     maxValue={rowMax}
                     valueFromBlock={(block) => block.byRole[role.id] || 0}
-                    onSelect={(bar) => showPopover(bar, role.id)}
+                    onSelect={(bar) => {
+                      const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
+                      showPopover(bar, role.nombre, source.byRole[role.id] || 0);
+                    }}
                   />
                 </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="chip-row">
+            {roles.flatMap((role) => (groupedFunctions[role.id] || []).map((fn) => (
+              <span key={fn.id} className="chip" style={{ borderColor: role.color, color: role.color }}>
+                {fn.nombre}: {functionTotals[fn.id] || 0}
+              </span>
+            )))}
+          </div>
+          <div className="coverage-rows">
+            {roles.map((role) => (
+              <div key={role.id} className="function-coverage-group">
+                <p>{role.nombre}</p>
+                {(groupedFunctions[role.id] || []).map((fn) => {
+                  const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
+                  return (
+                    <div key={fn.id} className="coverage-row">
+                      <HeatbarRow
+                        blocks={weekBlocks}
+                        color={role.color || '#60a5fa'}
+                        maxValue={rowMax}
+                        valueFromBlock={(block) => block.byFunction[fn.id] || 0}
+                        onSelect={(bar) => {
+                          const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
+                          showPopover(bar, fn.nombre, source.byFunction[fn.id] || 0, roleById.get(fn.roleId)?.nombre);
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        </>
       )}
+
 
       {popover && (
         <button className="coverage-popover" onClick={() => setPopover(null)}>

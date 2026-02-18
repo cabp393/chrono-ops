@@ -83,13 +83,11 @@ select, input {
 .heatbar { margin-top: 10px; width: 100%; }
 .heatbar-line { display: flex; flex-wrap: nowrap; overflow: hidden; width: 100%; gap: 1px; align-items: center; }
 .heatbar-segment { border: 0; height: 22px; background: #2563eb; border-radius: 2px; padding: 0; flex: 0 0 auto; }
-.role-rows { margin-top: 10px; display: grid; gap: 8px; }
-.role-row { display: grid; grid-template-columns: minmax(78px, 128px) minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12px; min-height: 26px; }
-.role-chip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; font-size: 12px; padding: 3px 8px; }
-.role-row-bars { min-width: 0; }
-.role-row-bars .heatbar-segment { height: 8px; }
-.total-row-wrap { margin-top: 10px; }
-.total-row-label { visibility: hidden; pointer-events: none; }
+.coverage-rows { margin-top: 10px; display: grid; gap: 8px; }
+.coverage-row { width: 100%; }
+.coverage-row .heatbar-segment { height: 10px; }
+.function-coverage-group { display: grid; gap: 6px; }
+.function-coverage-group > p { margin: 0; font-size: 12px; font-weight: 600; color: #64748b; }
 .coverage-popover {
   position: absolute;
   left: 50%;
@@ -183,6 +181,15 @@ select, input {
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid #ecf1f8;
+}
+.pending-badge {
+  margin-left: auto;
+  font-size: 12px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 .filters-scroll {
   overflow: auto;
