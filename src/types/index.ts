@@ -24,6 +24,14 @@ export type Shift = {
   etiqueta?: string;
 };
 
+export type ShiftDaySegment = {
+  shiftId: string;
+  personId: string;
+  dayKey: string;
+  segStartISO: string;
+  segEndISO: string;
+};
+
 export type TimeScale = 30 | 60 | 120 | 180 | 240 | 360;
 
 export type ShiftLabelMode = 'person' | 'function';

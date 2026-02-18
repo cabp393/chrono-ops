@@ -65,12 +65,13 @@ const seedShifts = (baseMonday: Date): Shift[] => {
     const end = new Date(baseMonday);
     end.setDate(end.getDate() + dayOffset);
     end.setHours(endH, endM, 0, 0);
+    if (end <= start) end.setDate(end.getDate() + 1);
     return { id: crypto.randomUUID(), personId, startISO: start.toISOString(), endISO: end.toISOString(), etiqueta };
   };
 
   return [
     mk(0, 6, 0, 14, 0, 'p1', 'Recepción'), mk(0, 8, 0, 16, 0, 'p2'), mk(0, 11, 30, 20, 0, 'p4'), mk(0, 9, 0, 18, 0, 'p7'),
-    mk(1, 6, 0, 14, 0, 'p3'), mk(1, 10, 0, 18, 0, 'p5'), mk(1, 12, 0, 20, 0, 'p6', 'Picos'), mk(1, 9, 0, 18, 0, 'p8'),
+    mk(1, 6, 0, 14, 0, 'p3'), mk(1, 10, 0, 18, 0, 'p5'), mk(1, 12, 0, 20, 0, 'p6', 'Picos'), mk(1, 9, 0, 18, 0, 'p8'), mk(1, 22, 0, 6, 0, 'p2', 'Turno noche'),
     mk(2, 7, 0, 15, 0, 'p1'), mk(2, 8, 0, 16, 0, 'p2'), mk(2, 14, 0, 22, 0, 'p4'), mk(2, 9, 0, 18, 0, 'p7'),
     mk(3, 0, 30, 7, 0, 'p8', 'Nocturno'), mk(3, 0, 30, 7, 0, 'p4', 'Nocturno'), mk(3, 6, 0, 14, 0, 'p3'),
     mk(4, 6, 0, 14, 0, 'p1'), mk(4, 12, 0, 20, 0, 'p6'), mk(4, 9, 0, 18, 0, 'p7'),
