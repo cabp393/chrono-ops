@@ -46,5 +46,4 @@ export type AppliedFilters = {
   searchText: string;
   roleIds: string[];
   functionIds: string[];
-  onlyGaps: boolean;
 };

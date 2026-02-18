@@ -4,25 +4,23 @@ import type { AppliedFilters, Function, Person, Role, ShiftLabelMode, TimeScale 
 import { FilterFooter } from './filters/FilterFooter';
 import { FilterPill } from './filters/FilterPill';
 import { FilterSection } from './filters/FilterSection';
-import { SearchInput } from './filters/SearchInput';
 
 type Props = {
   roles: Role[];
   functions: Function[];
   people: Person[];
   appliedFilters: AppliedFilters;
-  showLabels: boolean;
   scale: TimeScale;
   shiftLabelMode: ShiftLabelMode;
   open: boolean;
   onClose: () => void;
   onApplyFilters: (filters: AppliedFilters) => void;
   onResetFilters: () => void;
-  onToggleLabels: (value: boolean) => void;
   onShiftLabelModeChange: (mode: ShiftLabelMode) => void;
   onScaleChange: (value: TimeScale) => void;
 };
 
+const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [] };
 const norm = (value: string) => value.trim().toLowerCase();
 
 export const FiltersPanel = ({
@@ -30,14 +28,12 @@ export const FiltersPanel = ({
   functions,
   people,
   appliedFilters,
-  showLabels,
   scale,
   shiftLabelMode,
   open,
   onClose,
   onApplyFilters,
   onResetFilters,
-  onToggleLabels,
   onShiftLabelModeChange,
   onScaleChange
 }: Props) => {
@@ -109,146 +105,120 @@ export const FiltersPanel = ({
     }));
   };
 
-  const handleClose = () => {
-    setDraft(appliedFilters);
-    onClose();
-  };
+  if (!open) return null;
 
   return (
-    <aside className={`filters-panel ${open ? 'open' : ''}`}>
-      <div className="filters-head">
-        <h3>Panel</h3>
-        <div className="filters-head-actions">
-          {hasUnsavedChanges && <span className="pending-badge">Cambios sin aplicar</span>}
-          <button type="button" className="ghost" onClick={handleClose}>Cerrar</button>
+    <div className="filters-drawer" role="presentation">
+      <button type="button" className="filters-overlay" aria-label="Cerrar panel de filtros" onClick={onClose} />
+
+      <aside className="filters-panel open" role="dialog" aria-modal="true" aria-label="Panel de filtros" onClick={(event) => event.stopPropagation()}>
+        <div className="filters-head">
+          <h3>Panel</h3>
+          <button type="button" className="ghost" onClick={onClose}>Cerrar</button>
         </div>
-      </div>
 
-      <div className="filters-scroll">
-        <FilterSection title="Visualización">
-          <div className="sub-control">
-            <p>Bloque horario</p>
-            <div className="pill-grid">
-              {TIME_SCALE_OPTIONS.map((option) => (
+        <div className="filters-scroll">
+          <FilterSection title="Opciones de visualización">
+            <div className="sub-control">
+              <p>Duración de bloque</p>
+              <div className="pill-grid">
+                {TIME_SCALE_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`filter-pill ${scale === option ? 'active' : ''}`}
+                    onClick={() => onScaleChange(option)}
+                  >
+                    <span>{scaleLabel(option).replace(' min', 'm').replace(' h', 'h')}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="sub-control">
+              <p>Texto en turnos</p>
+              <div className="pill-grid">
                 <button
-                  key={option}
                   type="button"
-                  className={`filter-pill ${scale === option ? 'active' : ''}`}
-                  onClick={() => onScaleChange(option)}
+                  className={`filter-pill ${shiftLabelMode === 'person' ? 'active' : ''}`}
+                  onClick={() => onShiftLabelModeChange('person')}
                 >
-                  <span>{scaleLabel(option).replace(' min', 'm').replace(' h', 'h')}</span>
+                  <span>Nombre</span>
                 </button>
-              ))}
+                <button
+                  type="button"
+                  className={`filter-pill ${shiftLabelMode === 'function' ? 'active' : ''}`}
+                  onClick={() => onShiftLabelModeChange('function')}
+                >
+                  <span>Función</span>
+                </button>
+              </div>
             </div>
-          </div>
+          </FilterSection>
 
-          <div className="sub-control">
-            <p>Texto en turnos</p>
-            <div className="segmented shift-label-segmented">
-              <button
-                type="button"
-                className={shiftLabelMode === 'person' ? 'active' : ''}
-                onClick={() => onShiftLabelModeChange('person')}
-              >
-                Nombre
-              </button>
-              <button
-                type="button"
-                className={shiftLabelMode === 'function' ? 'active' : ''}
-                onClick={() => onShiftLabelModeChange('function')}
-              >
-                Función
-              </button>
+          <FilterSection title="Filtros">
+            <div className="sub-control">
+              <p>Rol</p>
+              <div className="pill-grid">
+                {roles.map((role) => (
+                  <FilterPill
+                    key={role.id}
+                    label={role.nombre}
+                    count={roleCounts[role.id] || 0}
+                    color={role.color}
+                    active={draft.roleIds.includes(role.id)}
+                    onClick={() => toggleRole(role.id)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
 
-          <label className="switch-row">
-            <span>Mostrar etiquetas</span>
-            <button
-              type="button"
-              className={`switch ${showLabels ? 'on' : ''}`}
-              aria-pressed={showLabels}
-              onClick={() => onToggleLabels(!showLabels)}
-            >
-              <span className="switch-thumb" />
-            </button>
-          </label>
-        </FilterSection>
-
-        <FilterSection title="Filtros">
-          <SearchInput
-            value={draft.searchText}
-            onChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
-            onClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
-          />
-
-          <div className="sub-control">
-            <p>Rol</p>
-            <div className="pill-grid">
-              {roles.map((role) => (
-                <FilterPill
-                  key={role.id}
-                  label={role.nombre}
-                  count={roleCounts[role.id] || 0}
-                  color={role.color}
-                  active={draft.roleIds.includes(role.id)}
-                  onClick={() => toggleRole(role.id)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="sub-control">
-            <p>Función</p>
-            <div className="function-groups">
-              {visibleRoleIds.map((roleId) => {
-                const role = roles.find((item) => item.id === roleId);
-                const items = groupedFunctions[roleId] || [];
-                if (items.length === 0) return null;
-                return (
-                  <div key={roleId} className="function-group">
-                    <p>{role?.nombre ?? roleId}</p>
-                    <div className="pill-grid">
-                      {items.map((fn) => (
-                        <FilterPill
-                          key={fn.id}
-                          label={fn.nombre}
-                          count={functionCounts[fn.id] || 0}
-                          color={role?.color}
-                          active={draft.functionIds.includes(fn.id)}
-                          onClick={() => toggleFunction(fn.id)}
-                        />
-                      ))}
+            <div className="sub-control">
+              <p>Función</p>
+              <div className="function-groups">
+                {visibleRoleIds.map((roleId) => {
+                  const role = roles.find((item) => item.id === roleId);
+                  const items = groupedFunctions[roleId] || [];
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={roleId} className="function-group">
+                      <p>{role?.nombre ?? roleId}</p>
+                      <div className="pill-grid">
+                        {items.map((fn) => (
+                          <FilterPill
+                            key={fn.id}
+                            label={fn.nombre}
+                            count={functionCounts[fn.id] || 0}
+                            color={role?.color}
+                            active={draft.functionIds.includes(fn.id)}
+                            onClick={() => toggleFunction(fn.id)}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          </FilterSection>
+        </div>
 
-          <label className="switch-row">
-            <span>Mostrar solo vacíos</span>
-            <button
-              type="button"
-              className={`switch ${draft.onlyGaps ? 'on' : ''}`}
-              aria-pressed={draft.onlyGaps}
-              onClick={() => setDraft((prev) => ({ ...prev, onlyGaps: !prev.onlyGaps }))}
-            >
-              <span className="switch-thumb" />
-            </button>
-          </label>
-        </FilterSection>
-      </div>
-
-      <FilterFooter
-        disabledApply={!hasUnsavedChanges}
-        onApply={() => onApplyFilters(draft)}
-        onReset={() => {
-          const resetFilters: AppliedFilters = { searchText: '', roleIds: [], functionIds: [], onlyGaps: false };
-          setDraft(resetFilters);
-          onResetFilters();
-        }}
-      />
-    </aside>
+        <FilterFooter
+          searchText={draft.searchText}
+          onSearchChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
+          onSearchClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
+          disabledApply={!hasUnsavedChanges}
+          onApply={() => {
+            onApplyFilters(draft);
+            onClose();
+          }}
+          onReset={() => {
+            setDraft(EMPTY_FILTERS);
+            onResetFilters();
+            onClose();
+          }}
+        />
+      </aside>
+    </div>
   );
 };
