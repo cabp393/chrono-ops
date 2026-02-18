@@ -1,4 +1,4 @@
-import type { CoverageBlock, Role, Shift, TimeScale } from '../types';
+import type { CoverageBlock, Role, TimeScale } from '../types';
 import { addDays } from './dateUtils';
 import { splitShiftByDay, toDayKey } from './shiftSegments';
 
@@ -8,12 +8,19 @@ type DayCoverage = {
   blocks: CoverageBlock[];
 };
 
+type TimeBlock = {
+  id: string;
+  personId: string;
+  startISO: string;
+  endISO: string;
+};
+
 export const calculateCoverage = (
   weekStart: Date,
-  shifts: Shift[],
+  shifts: TimeBlock[],
   roles: Role[],
   scale: TimeScale,
-  getRoleId: (shift: Shift) => string | undefined
+  getRoleId: (shift: TimeBlock) => string | undefined
 ): DayCoverage[] => {
   const blockMs = scale * 60 * 1000;
   const totalBlocks = (24 * 60) / scale;
@@ -47,7 +54,7 @@ export const calculateCoverage = (
     const dayStart = day.dayDate.getTime();
 
     segments.forEach((segment) => {
-      const shift: Shift = {
+      const shift: TimeBlock = {
         id: segment.shiftId,
         personId: segment.personId,
         startISO: segment.segStartISO,

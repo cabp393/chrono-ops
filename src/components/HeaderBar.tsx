@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Target } from '../lib/icons';
+import { ChevronLeft, ChevronRight, Target } from '../lib/icons';
 
 type ViewMode = 'week' | 'schedules';
 
@@ -8,7 +8,6 @@ type Props = {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onCurrentWeek: () => void;
-  onAddShift: () => void;
   onOpenFilters: () => void;
   view: ViewMode;
   onChangeView: (view: ViewMode) => void;
@@ -20,7 +19,6 @@ export const HeaderBar = ({
   onPrevWeek,
   onNextWeek,
   onCurrentWeek,
-  onAddShift,
   onOpenFilters,
   view,
   onChangeView
@@ -36,12 +34,6 @@ export const HeaderBar = ({
       </div>
       <div className="header-actions">
         {view === 'week' ? <button className="ghost" onClick={onOpenFilters}>Filtros</button> : null}
-        {view === 'week' ? (
-          <button className="primary add-shift-btn" onClick={onAddShift} title="Agregar turno" aria-label="Agregar turno">
-            <Plus size={14} />
-            <span>Agregar turno</span>
-          </button>
-        ) : null}
       </div>
     </div>
 
