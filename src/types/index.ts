@@ -1,47 +1,35 @@
-export type Minute = number;
-
-/**
- * Represents a range of time in minutes (0 = 00:00, 1440 = 24:00).
- * If end < start, the range is considered to cross midnight.
- */
-export interface TimeRange {
-  start: Minute;
-  end: Minute;
-}
-
-/** Base shift template definition. */
-export interface Shift {
+export type Role = {
   id: string;
-  name: string;
-  color: string;
-  workRange: TimeRange;
-  breakRange: TimeRange | null;
-}
+  nombre: string;
+  color?: string;
+};
 
-/**
- * Specific assignment for a weekday row in the weekly timeline.
- * dayIndex: 0 = Monday, 6 = Sunday.
- */
-export interface DayAssignment {
-  dayIndex: number;
-  shiftId: string;
-  overrideWorkRange?: TimeRange;
-  overrideBreakRange?: TimeRange;
-}
+export type Person = {
+  id: string;
+  nombre: string;
+  rolId: string;
+};
 
-export interface AppSettings {
-  resolution: 15 | 30 | 60;
-  weeklyTarget: number;
-}
+export type Shift = {
+  id: string;
+  personId: string;
+  rolId: string;
+  startISO: string;
+  endISO: string;
+  etiqueta?: string;
+};
 
-export interface AppUiState {
-  selectedShiftId: string | null;
-  selectedDayIndex: number | null;
-}
+export type TimeScale = 30 | 60 | 120 | 180 | 240 | 360;
 
-export interface AppState {
+export type AppData = {
+  roles: Role[];
+  people: Person[];
   shifts: Shift[];
-  schedule: Record<number, DayAssignment>;
-  settings: AppSettings;
-  ui: AppUiState;
-}
+};
+
+export type CoverageBlock = {
+  start: Date;
+  end: Date;
+  total: number;
+  byRole: Record<string, number>;
+};

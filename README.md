@@ -1,39 +1,27 @@
-# Chrono Ops Planner (React + LocalStorage)
+# ShiftBoard
 
-Aplicación front-end (sin backend) para planificar turnos y comparar escenarios.
+App web para control y visualización semanal de turnos.
 
 ## Stack
+- React + TypeScript + Vite
+- Persistencia local en `localStorage`
+- UI dashboard minimalista (cards + grid semanal)
 
-- React 18 + Vite.
-- Persistencia **únicamente en LocalStorage**.
-- Core engine separado de la UI (`src/engine.js`) con funciones deterministas.
-- Lista para despliegue en Vercel como proyecto estático.
-
-## Módulos funcionales
-
-- Scenario Builder
-- Workforce & Areas
-- Shift Models Library
-- Generator / Optimizer
-- Visualizer
-- Compare
-
-## Ejecutar localmente
-
+## Ejecutar
 ```bash
 npm install
 npm run dev
 ```
 
-## Build para producción
-
+## Build
 ```bash
 npm run build
 npm run preview
 ```
 
-## Tests
-
-```bash
-npm test
-```
+## Funcionalidades
+- Vista semanal Lun→Dom con eje de tiempo y zoom (30m, 1h, 2h, 3h, 4h, 6h)
+- Cobertura visual por bloque horario + resumen por rol
+- Filtros por rol/persona y modo “solo vacíos”
+- Alta/edición/duplicado de turnos desde modal
+- Datos demo automáticos al primer inicio
