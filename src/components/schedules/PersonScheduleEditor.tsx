@@ -80,7 +80,8 @@ export const PersonScheduleEditor = ({
       <WeekScheduleTable
         personId={person.id}
         weekStart={weekStart}
-        template={template}
+        templates={templates}
+        personSchedules={personSchedules}
         overrides={overrides}
         onUpsertOverride={onUpsertOverride}
         onRevertOverride={onRevertOverride}

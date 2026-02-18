@@ -1,5 +1,5 @@
 import { addDays } from './dateUtils';
-import type { ScheduleDayKey, ScheduleDaySlot, ScheduleOverride, ScheduleTemplate } from '../types';
+import type { PersonSchedule, ScheduleDayKey, ScheduleDaySlot, ScheduleOverride, ScheduleTemplate } from '../types';
 
 export const DAY_KEYS: ScheduleDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 export const DAY_LABELS: Record<ScheduleDayKey, string> = {
@@ -48,16 +48,30 @@ export const formatSlot = (slot: ScheduleDaySlot) => {
   return `${slot.start}–${slot.end}${isOvernight(slot) ? ' (+1)' : ''}`;
 };
 
+export type ScheduleResolutionData = {
+  templates: ScheduleTemplate[];
+  personSchedules: PersonSchedule[];
+  overrides: ScheduleOverride[];
+};
+
+export const findScheduleOverride = (
+  personId: string,
+  dateISO: string,
+  overrides: ScheduleOverride[]
+): ScheduleOverride | undefined => overrides.find((item) => item.personId === personId && item.dateISO === dateISO);
+
 export const resolveSchedule = (
   personId: string,
   dateISO: string,
-  template: ScheduleTemplate | undefined,
-  overrides: ScheduleOverride[]
+  data: ScheduleResolutionData
 ): { source: 'override' | 'template' | 'none'; slot: ScheduleDaySlot } => {
-  const override = overrides.find((item) => item.personId === personId && item.dateISO === dateISO);
+  const override = findScheduleOverride(personId, dateISO, data.overrides);
   if (override) {
     return { source: 'override', slot: { start: override.start, end: override.end } };
   }
+
+  const assignment = data.personSchedules.find((item) => item.personId === personId);
+  const template = data.templates.find((item) => item.id === assignment?.templateId);
 
   if (template) {
     const [year, month, day] = dateISO.split('-').map(Number);

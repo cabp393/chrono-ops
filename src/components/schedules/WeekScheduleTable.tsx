@@ -1,16 +1,17 @@
-import { DAY_LABELS, formatDateCompact, formatSlot, getDayKey, resolveSchedule, toISODate, weekDates } from '../../lib/scheduleUtils';
-import type { ScheduleOverride, ScheduleTemplate } from '../../types';
+import { DAY_LABELS, findScheduleOverride, formatDateCompact, formatSlot, getDayKey, resolveSchedule, toISODate, weekDates } from '../../lib/scheduleUtils';
+import type { PersonSchedule, ScheduleOverride, ScheduleTemplate } from '../../types';
 
 type Props = {
   personId: string;
   weekStart: Date;
-  template: ScheduleTemplate | undefined;
+  templates: ScheduleTemplate[];
+  personSchedules: PersonSchedule[];
   overrides: ScheduleOverride[];
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
   onRevertOverride: (dateISO: string) => void;
 };
 
-export const WeekScheduleTable = ({ personId, weekStart, template, overrides, onUpsertOverride, onRevertOverride }: Props) => {
+export const WeekScheduleTable = ({ personId, weekStart, templates, personSchedules, overrides, onUpsertOverride, onRevertOverride }: Props) => {
   const dates = weekDates(weekStart);
 
   return (
@@ -19,8 +20,8 @@ export const WeekScheduleTable = ({ personId, weekStart, template, overrides, on
       <div className="week-day-list">
         {dates.map((date) => {
           const dateISO = toISODate(date);
-          const resolved = resolveSchedule(personId, dateISO, template, overrides);
-          const override = overrides.find((item) => item.personId === personId && item.dateISO === dateISO);
+          const resolved = resolveSchedule(personId, dateISO, { templates, personSchedules, overrides });
+          const override = findScheduleOverride(personId, dateISO, overrides);
           const dayKey = getDayKey(date);
           const badge = resolved.source === 'override' ? 'Ajuste' : resolved.source === 'template' ? 'Base' : 'Libre';
           return (
@@ -50,7 +51,7 @@ export const WeekScheduleTable = ({ personId, weekStart, template, overrides, on
                 <button className="ghost" onClick={() => onUpsertOverride(dateISO, null, null)}>Libre</button>
                 {override ? <button onClick={() => onRevertOverride(dateISO)}>Revertir</button> : null}
               </div>
-              <p className="week-day-preview">{formatSlot({ start: override?.start ?? resolved.slot.start, end: override?.end ?? resolved.slot.end })}</p>
+              <p className="week-day-preview">{formatSlot(resolved.slot)}</p>
             </article>
           );
         })}
