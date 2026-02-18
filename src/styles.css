@@ -309,3 +309,71 @@ select, input {
 }
 
 body.drawer-open { overflow: hidden; }
+
+.brand-wrap { display: flex; align-items: center; gap: 10px; }
+.nav-tabs button { min-width: 78px; justify-content: center; }
+
+.schedules-layout {
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.schedules-people-list {
+  display: grid;
+  gap: 10px;
+  max-height: calc(100vh - 96px);
+  position: sticky;
+  top: 78px;
+}
+
+.people-items { display: grid; gap: 6px; overflow: auto; }
+.person-item {
+  width: 100%;
+  text-align: left;
+  justify-content: space-between;
+  border-radius: 10px;
+  padding: 8px;
+}
+.person-item strong { font-size: 14px; }
+.person-item p { margin: 2px 0 0; color: #64748b; font-size: 12px; }
+.person-item.active { border-color: #93c5fd; background: #eff6ff; }
+.person-item-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.chip.warning { color: #9a3412; border-color: #fdba74; background: #fff7ed; }
+
+.schedule-editor-col { display: grid; gap: 10px; }
+.schedule-editor-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.schedule-editor-header p { margin: 2px 0 0; color: #64748b; font-size: 12px; }
+.template-assignment-card { display: grid; gap: 8px; }
+.template-assignment-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.template-assignment-card p { margin: 0; color: #64748b; }
+
+.schedule-week-card { display: grid; gap: 8px; }
+.schedule-week-card h3 { margin: 0; }
+.week-day-list { display: grid; gap: 8px; }
+.week-day-row { border: 1px solid #e7edf7; border-radius: 10px; padding: 8px; display: grid; gap: 7px; }
+.week-day-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.day-controls { display: grid; grid-template-columns: 105px 105px auto auto; gap: 6px; align-items: center; }
+.day-controls button { justify-content: center; }
+.week-day-preview { margin: 0; color: #64748b; font-size: 12px; }
+.schedule-footer { margin-top: 2px; }
+
+.templates-modal { width: min(920px, 96vw); max-height: 88vh; overflow: auto; }
+.templates-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.templates-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 10px; }
+.template-list { display: grid; align-content: start; gap: 6px; }
+.template-item { width: 100%; justify-content: flex-start; }
+.template-item.active { border-color: #93c5fd; background: #eff6ff; }
+.template-editor { display: grid; gap: 8px; }
+.template-editor-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.template-quick-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.template-days { display: grid; gap: 6px; }
+.template-day-row { display: grid; grid-template-columns: 48px 98px 98px auto auto; gap: 6px; align-items: center; }
+
+@media (max-width: 960px) {
+  .schedules-layout { grid-template-columns: minmax(0, 1fr); }
+  .schedules-people-list { position: static; max-height: none; }
+  .day-controls { grid-template-columns: 1fr 1fr; }
+  .templates-body { grid-template-columns: minmax(0, 1fr); }
+  .template-day-row { grid-template-columns: 42px 1fr 1fr auto; }
+  .template-day-row .chip { grid-column: 1 / -1; }
+}
