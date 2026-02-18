@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TIME_SCALE_OPTIONS, scaleLabel } from '../lib/timeScale';
-import type { AppliedFilters, Function, Person, Role, TimeScale } from '../types';
+import type { AppliedFilters, Function, Person, Role, ShiftLabelMode, TimeScale } from '../types';
 import { FilterFooter } from './filters/FilterFooter';
 import { FilterPill } from './filters/FilterPill';
 import { FilterSection } from './filters/FilterSection';
@@ -12,14 +12,14 @@ type Props = {
   people: Person[];
   appliedFilters: AppliedFilters;
   showLabels: boolean;
-  onlyGaps: boolean;
   scale: TimeScale;
+  shiftLabelMode: ShiftLabelMode;
   open: boolean;
   onClose: () => void;
   onApplyFilters: (filters: AppliedFilters) => void;
   onResetFilters: () => void;
   onToggleLabels: (value: boolean) => void;
-  onToggleGaps: (value: boolean) => void;
+  onShiftLabelModeChange: (mode: ShiftLabelMode) => void;
   onScaleChange: (value: TimeScale) => void;
 };
 
@@ -31,14 +31,14 @@ export const FiltersPanel = ({
   people,
   appliedFilters,
   showLabels,
-  onlyGaps,
   scale,
+  shiftLabelMode,
   open,
   onClose,
   onApplyFilters,
   onResetFilters,
   onToggleLabels,
-  onToggleGaps,
+  onShiftLabelModeChange,
   onScaleChange
 }: Props) => {
   const [draft, setDraft] = useState<AppliedFilters>(appliedFilters);
@@ -117,7 +117,7 @@ export const FiltersPanel = ({
   return (
     <aside className={`filters-panel ${open ? 'open' : ''}`}>
       <div className="filters-head">
-        <h3>Filtros</h3>
+        <h3>Panel</h3>
         <div className="filters-head-actions">
           {hasUnsavedChanges && <span className="pending-badge">Cambios sin aplicar</span>}
           <button type="button" className="ghost" onClick={handleClose}>Cerrar</button>
@@ -125,81 +125,42 @@ export const FiltersPanel = ({
       </div>
 
       <div className="filters-scroll">
-        <SearchInput
-          value={draft.searchText}
-          onChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
-          onClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
-        />
+        <FilterSection title="Visualización">
+          <div className="sub-control">
+            <p>Bloque horario</p>
+            <div className="pill-grid">
+              {TIME_SCALE_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`filter-pill ${scale === option ? 'active' : ''}`}
+                  onClick={() => onScaleChange(option)}
+                >
+                  <span>{scaleLabel(option).replace(' min', 'm').replace(' h', 'h')}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <FilterSection title="Vista">
-          <div className="pill-grid">
-            {TIME_SCALE_OPTIONS.map((option) => (
+          <div className="sub-control">
+            <p>Texto en turnos</p>
+            <div className="segmented shift-label-segmented">
               <button
-                key={option}
                 type="button"
-                className={`filter-pill ${scale === option ? 'active' : ''}`}
-                onClick={() => onScaleChange(option)}
+                className={shiftLabelMode === 'person' ? 'active' : ''}
+                onClick={() => onShiftLabelModeChange('person')}
               >
-                <span>{scaleLabel(option).replace(' min', 'm').replace(' h', 'h')}</span>
+                Nombre
               </button>
-            ))}
+              <button
+                type="button"
+                className={shiftLabelMode === 'function' ? 'active' : ''}
+                onClick={() => onShiftLabelModeChange('function')}
+              >
+                Función
+              </button>
+            </div>
           </div>
-        </FilterSection>
-
-        <FilterSection title="Rol">
-          <div className="pill-grid">
-            {roles.map((role) => (
-              <FilterPill
-                key={role.id}
-                label={role.nombre}
-                count={roleCounts[role.id] || 0}
-                color={role.color}
-                active={draft.roleIds.includes(role.id)}
-                onClick={() => toggleRole(role.id)}
-              />
-            ))}
-          </div>
-        </FilterSection>
-
-        <FilterSection title="Función">
-          <div className="function-groups">
-            {visibleRoleIds.map((roleId) => {
-              const role = roles.find((item) => item.id === roleId);
-              const items = groupedFunctions[roleId] || [];
-              if (items.length === 0) return null;
-              return (
-                <div key={roleId} className="function-group">
-                  <p>{role?.nombre ?? roleId}</p>
-                  <div className="pill-grid">
-                    {items.map((fn) => (
-                      <FilterPill
-                        key={fn.id}
-                        label={fn.nombre}
-                        count={functionCounts[fn.id] || 0}
-                        color={role?.color}
-                        active={draft.functionIds.includes(fn.id)}
-                        onClick={() => toggleFunction(fn.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </FilterSection>
-
-        <FilterSection title="Opciones">
-          <label className="switch-row">
-            <span>Mostrar solo vacíos</span>
-            <button
-              type="button"
-              className={`switch ${onlyGaps ? 'on' : ''}`}
-              aria-pressed={onlyGaps}
-              onClick={() => onToggleGaps(!onlyGaps)}
-            >
-              <span className="switch-thumb" />
-            </button>
-          </label>
 
           <label className="switch-row">
             <span>Mostrar etiquetas</span>
@@ -213,12 +174,78 @@ export const FiltersPanel = ({
             </button>
           </label>
         </FilterSection>
+
+        <FilterSection title="Filtros">
+          <SearchInput
+            value={draft.searchText}
+            onChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
+            onClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
+          />
+
+          <div className="sub-control">
+            <p>Rol</p>
+            <div className="pill-grid">
+              {roles.map((role) => (
+                <FilterPill
+                  key={role.id}
+                  label={role.nombre}
+                  count={roleCounts[role.id] || 0}
+                  color={role.color}
+                  active={draft.roleIds.includes(role.id)}
+                  onClick={() => toggleRole(role.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="sub-control">
+            <p>Función</p>
+            <div className="function-groups">
+              {visibleRoleIds.map((roleId) => {
+                const role = roles.find((item) => item.id === roleId);
+                const items = groupedFunctions[roleId] || [];
+                if (items.length === 0) return null;
+                return (
+                  <div key={roleId} className="function-group">
+                    <p>{role?.nombre ?? roleId}</p>
+                    <div className="pill-grid">
+                      {items.map((fn) => (
+                        <FilterPill
+                          key={fn.id}
+                          label={fn.nombre}
+                          count={functionCounts[fn.id] || 0}
+                          color={role?.color}
+                          active={draft.functionIds.includes(fn.id)}
+                          onClick={() => toggleFunction(fn.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <label className="switch-row">
+            <span>Mostrar solo vacíos</span>
+            <button
+              type="button"
+              className={`switch ${draft.onlyGaps ? 'on' : ''}`}
+              aria-pressed={draft.onlyGaps}
+              onClick={() => setDraft((prev) => ({ ...prev, onlyGaps: !prev.onlyGaps }))}
+            >
+              <span className="switch-thumb" />
+            </button>
+          </label>
+        </FilterSection>
       </div>
 
       <FilterFooter
+        disabledApply={!hasUnsavedChanges}
         onApply={() => onApplyFilters(draft)}
         onReset={() => {
-          setDraft({ searchText: '', roleIds: [], functionIds: [] });
+          const resetFilters: AppliedFilters = { searchText: '', roleIds: [], functionIds: [], onlyGaps: false };
+          setDraft(resetFilters);
           onResetFilters();
         }}
       />

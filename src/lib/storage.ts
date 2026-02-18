@@ -1,10 +1,11 @@
-import type { AppData, Function, Person, Role, Shift } from '../types';
+import type { AppData, Function, Person, Role, Shift, ShiftLabelMode } from '../types';
 import { clampScale } from './timeScale';
 import type { TimeScale } from '../types';
 
 const STORAGE_KEY = 'shiftboard:data:v2';
 const LEGACY_STORAGE_KEY = 'shiftboard:data:v1';
 const VIEW_SCALE_KEY = 'shiftboard:view:timeScale';
+const SHIFT_LABEL_MODE_KEY = 'shiftboard:view:shiftLabelMode';
 
 type LegacyPerson = {
   id: string;
@@ -190,4 +191,14 @@ export const loadTimeScalePreference = (): TimeScale => {
 
 export const saveTimeScalePreference = (scale: TimeScale) => {
   localStorage.setItem(VIEW_SCALE_KEY, String(scale));
+};
+
+export const loadShiftLabelModePreference = (): ShiftLabelMode => {
+  const raw = localStorage.getItem(SHIFT_LABEL_MODE_KEY);
+  if (raw === 'person' || raw === 'function') return raw;
+  return 'person';
+};
+
+export const saveShiftLabelModePreference = (mode: ShiftLabelMode) => {
+  localStorage.setItem(SHIFT_LABEL_MODE_KEY, mode);
 };

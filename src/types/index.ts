@@ -26,6 +26,8 @@ export type Shift = {
 
 export type TimeScale = 30 | 60 | 120 | 180 | 240 | 360;
 
+export type ShiftLabelMode = 'person' | 'function';
+
 export type AppData = {
   roles: Role[];
   functions: Function[];
@@ -44,4 +46,5 @@ export type AppliedFilters = {
   searchText: string;
   roleIds: string[];
   functionIds: string[];
+  onlyGaps: boolean;
 };

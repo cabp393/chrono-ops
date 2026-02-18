@@ -7,19 +7,26 @@ import { WeekGrid } from './components/WeekGrid';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
 import { buildFunctionMap, buildPersonMap, buildRoleMap, getShiftRole } from './lib/relations';
-import { loadData, loadTimeScalePreference, saveData, saveTimeScalePreference } from './lib/storage';
-import type { AppliedFilters, Shift, TimeScale } from './types';
+import {
+  loadData,
+  loadShiftLabelModePreference,
+  loadTimeScalePreference,
+  saveData,
+  saveShiftLabelModePreference,
+  saveTimeScalePreference
+} from './lib/storage';
+import type { AppliedFilters, Shift, ShiftLabelMode, TimeScale } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
-const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [] };
+const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [], onlyGaps: false };
 
 function App() {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [data, setData] = useState(() => loadData(todayWeekStart));
   const [scale, setScale] = useState<TimeScale>(() => loadTimeScalePreference());
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
-  const [onlyGaps, setOnlyGaps] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
+  const [shiftLabelMode, setShiftLabelMode] = useState<ShiftLabelMode>(() => loadShiftLabelModePreference());
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
   const [focusBlock, setFocusBlock] = useState<{ dayIndex: number; blockIndex: number } | null>(null);
@@ -111,9 +118,10 @@ function App() {
             coverageTotals={coverageTotals}
             onShiftClick={(shift) => { setEditing(shift); setModalOpen(true); }}
             onDuplicateShift={(shift) => duplicateShift(shift, 1)}
-            onlyGaps={onlyGaps}
+            onlyGaps={filters.onlyGaps}
             focusBlock={focusBlock}
             showLabels={showLabels}
+            shiftLabelMode={shiftLabelMode}
           />
         </section>
 
@@ -123,14 +131,17 @@ function App() {
           people={data.people}
           appliedFilters={filters}
           showLabels={showLabels}
-          onlyGaps={onlyGaps}
           scale={scale}
           open={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           onApplyFilters={setFilters}
           onResetFilters={() => setFilters(EMPTY_FILTERS)}
           onToggleLabels={setShowLabels}
-          onToggleGaps={setOnlyGaps}
+          shiftLabelMode={shiftLabelMode}
+          onShiftLabelModeChange={(mode) => {
+            setShiftLabelMode(mode);
+            saveShiftLabelModePreference(mode);
+          }}
           onScaleChange={(nextScale) => {
             setScale(nextScale);
             saveTimeScalePreference(nextScale);

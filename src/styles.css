@@ -135,7 +135,7 @@ select, input { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; padd
 }
 .shift-item.compact { padding: 3px 5px; }
 .shift-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
-.shift-item strong { font-size: 11px; }
+.shift-item strong { display: block; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .shift-item span, .shift-item small, .shift-item em { display: block; opacity: 0.85; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .shift-item em { font-style: normal; color: #334155; }
 .shift-menu { margin-left: auto; }
@@ -145,13 +145,18 @@ select, input { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; padd
   position: absolute;
   right: 2px;
   top: 18px;
+  min-width: 210px;
+  display: grid;
+  gap: 4px;
   background: #fff;
   border: 1px solid #dbe3ef;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  padding: 8px;
   z-index: 12;
 }
-.shift-menu-popover button { border: 0; border-radius: 8px; white-space: nowrap; }
+.shift-menu-popover p { margin: 0; font-size: 11px; color: #334155; }
+.shift-menu-popover button { border: 1px solid #dbe3ef; border-radius: 8px; white-space: nowrap; justify-content: center; margin-top: 2px; }
 
 
 .filters-panel {
@@ -231,6 +236,16 @@ select, input { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; padd
   font-weight: 600;
   color: #334155;
 }
+.sub-control {
+  display: grid;
+  gap: 6px;
+}
+.sub-control > p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+.shift-label-segmented { width: fit-content; }
 .pill-grid {
   display: flex;
   flex-wrap: wrap;
@@ -348,6 +363,7 @@ select, input { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; padd
     width: min(340px, 90vw);
     max-height: 100dvh;
     height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
     z-index: 80;
     border-radius: 0;
     transform: translateX(100%);
