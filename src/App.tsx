@@ -18,14 +18,13 @@ import {
 import type { AppliedFilters, Shift, ShiftLabelMode, TimeScale } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
-const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [], onlyGaps: false };
+const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [] };
 
 function App() {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [data, setData] = useState(() => loadData(todayWeekStart));
   const [scale, setScale] = useState<TimeScale>(() => loadTimeScalePreference());
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
-  const [showLabels, setShowLabels] = useState(true);
   const [shiftLabelMode, setShiftLabelMode] = useState<ShiftLabelMode>(() => loadShiftLabelModePreference());
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
@@ -117,37 +116,32 @@ function App() {
             scale={scale}
             coverageTotals={coverageTotals}
             onShiftClick={(shift) => { setEditing(shift); setModalOpen(true); }}
-            onDuplicateShift={(shift) => duplicateShift(shift, 1)}
-            onlyGaps={filters.onlyGaps}
             focusBlock={focusBlock}
-            showLabels={showLabels}
             shiftLabelMode={shiftLabelMode}
           />
         </section>
-
-        <FiltersPanel
-          roles={data.roles}
-          functions={data.functions}
-          people={data.people}
-          appliedFilters={filters}
-          showLabels={showLabels}
-          scale={scale}
-          open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
-          onApplyFilters={setFilters}
-          onResetFilters={() => setFilters(EMPTY_FILTERS)}
-          onToggleLabels={setShowLabels}
-          shiftLabelMode={shiftLabelMode}
-          onShiftLabelModeChange={(mode) => {
-            setShiftLabelMode(mode);
-            saveShiftLabelModePreference(mode);
-          }}
-          onScaleChange={(nextScale) => {
-            setScale(nextScale);
-            saveTimeScalePreference(nextScale);
-          }}
-        />
       </main>
+
+      <FiltersPanel
+        roles={data.roles}
+        functions={data.functions}
+        people={data.people}
+        appliedFilters={filters}
+        scale={scale}
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onApplyFilters={setFilters}
+        onResetFilters={() => setFilters(EMPTY_FILTERS)}
+        shiftLabelMode={shiftLabelMode}
+        onShiftLabelModeChange={(mode) => {
+          setShiftLabelMode(mode);
+          saveShiftLabelModePreference(mode);
+        }}
+        onScaleChange={(nextScale) => {
+          setScale(nextScale);
+          saveTimeScalePreference(nextScale);
+        }}
+      />
 
       <ShiftModal
         open={modalOpen}

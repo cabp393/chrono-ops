@@ -4,19 +4,15 @@ import { ShiftItem } from './ShiftItem';
 
 type Props = {
   dayShifts: Shift[];
-  dayDate: Date;
   people: Person[];
   functions: Function[];
   roles: Role[];
   scale: TimeScale;
   blockHeight: number;
   coverage: number[];
-  onlyGaps: boolean;
   focusBlockIndex: number | null;
-  showLabels: boolean;
   shiftLabelMode: ShiftLabelMode;
   onShiftClick: (shift: Shift) => void;
-  onDuplicateShift: (shift: Shift) => void;
 };
 
 export const DayColumn = ({
@@ -27,12 +23,9 @@ export const DayColumn = ({
   scale,
   blockHeight,
   coverage,
-  onlyGaps,
   focusBlockIndex,
-  showLabels,
   shiftLabelMode,
-  onShiftClick,
-  onDuplicateShift
+  onShiftClick
 }: Props) => {
   const dayHeight = ((24 * 60) / scale) * blockHeight;
   const peopleById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
@@ -57,15 +50,12 @@ export const DayColumn = ({
 
   return (
     <div className="day-column" style={{ height: dayHeight, gridTemplateRows: `repeat(${(24 * 60) / scale}, ${blockHeight}px)` }}>
-      {coverage.map((count, blockIndex) => {
-        const isGap = count === 0;
-        return (
-          <div
-            key={blockIndex}
-            className={`grid-slot ${onlyGaps && !isGap ? 'muted' : ''} ${focusBlockIndex === blockIndex ? 'focused' : ''}`}
-          />
-        );
-      })}
+      {coverage.map((_, blockIndex) => (
+        <div
+          key={blockIndex}
+          className={`grid-slot ${focusBlockIndex === blockIndex ? 'focused' : ''}`}
+        />
+      ))}
 
       {withLayout.map(({ shift, lane, overlap }) => {
         const start = new Date(shift.startISO);
@@ -87,8 +77,6 @@ export const DayColumn = ({
             role={role}
             compact={height < 48}
             onClick={onShiftClick}
-            onDuplicate={onDuplicateShift}
-            showLabel={showLabels}
             shiftLabelMode={shiftLabelMode}
             style={{ top, height, width, left }}
           />

@@ -13,10 +13,7 @@ type Props = {
   scale: TimeScale;
   coverageTotals: Record<string, number[]>;
   onShiftClick: (shift: Shift) => void;
-  onDuplicateShift: (shift: Shift) => void;
-  onlyGaps: boolean;
   focusBlock: { dayIndex: number; blockIndex: number } | null;
-  showLabels: boolean;
   shiftLabelMode: ShiftLabelMode;
 };
 
@@ -31,10 +28,7 @@ export const WeekGrid = ({
   scale,
   coverageTotals,
   onShiftClick,
-  onDuplicateShift,
-  onlyGaps,
   focusBlock,
-  showLabels,
   shiftLabelMode
 }: Props) => {
   const blockHeight = BLOCK_HEIGHT[scale];
@@ -75,19 +69,15 @@ export const WeekGrid = ({
             <DayColumn
               key={dayIdx}
               dayShifts={list}
-              dayDate={dayDate}
               people={people}
               functions={functions}
               roles={roles}
               scale={scale}
               blockHeight={blockHeight}
               coverage={coverage}
-              onlyGaps={onlyGaps}
               focusBlockIndex={focusBlock?.dayIndex === dayIdx ? focusBlock.blockIndex : null}
-              showLabels={showLabels}
               shiftLabelMode={shiftLabelMode}
               onShiftClick={onShiftClick}
-              onDuplicateShift={onDuplicateShift}
             />
           );
         })}
