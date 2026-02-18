@@ -83,6 +83,7 @@ function App() {
     <div className="app-shell">
       <HeaderBar
         weekLabel={formatWeekRange(weekStart)}
+        isCurrentWeek={weekStart.getTime() === todayWeekStart.getTime()}
         onPrevWeek={() => setWeekStart(addDays(weekStart, -7))}
         onCurrentWeek={() => setWeekStart(todayWeekStart)}
         onNextWeek={() => setWeekStart(addDays(weekStart, 7))}

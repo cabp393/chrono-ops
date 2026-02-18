@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Plus, Target } from '../lib/icons';
 
 type Props = {
   weekLabel: string;
+  isCurrentWeek: boolean;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onCurrentWeek: () => void;
@@ -11,6 +12,7 @@ type Props = {
 
 export const HeaderBar = ({
   weekLabel,
+  isCurrentWeek,
   onPrevWeek,
   onNextWeek,
   onCurrentWeek,
@@ -30,10 +32,17 @@ export const HeaderBar = ({
     </div>
 
     <div className="week-controls">
+      <button
+        className={`icon-btn current-week-icon ${isCurrentWeek ? 'active' : ''}`}
+        onClick={onCurrentWeek}
+        title="Ir a semana actual"
+        aria-label="Ir a semana actual"
+      >
+        <Target size={15} />
+      </button>
       <button className="icon-btn" onClick={onPrevWeek} aria-label="Semana anterior"><ChevronLeft size={16} /></button>
       <span className="week-label">{weekLabel}</span>
       <button className="icon-btn" onClick={onNextWeek} aria-label="Semana siguiente"><ChevronRight size={16} /></button>
-      <button className="ghost current-week-btn" onClick={onCurrentWeek}><Target size={14} />Semana actual</button>
     </div>
   </header>
 );
