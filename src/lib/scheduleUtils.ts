@@ -60,18 +60,22 @@ export const findScheduleOverride = (
   overrides: ScheduleOverride[]
 ): ScheduleOverride | undefined => overrides.find((item) => item.personId === personId && item.dateISO === dateISO);
 
-export const resolveSchedule = (
-  personId: string,
-  dateISO: string,
-  data: ScheduleResolutionData
-): { source: 'override' | 'template' | 'none'; slot: ScheduleDaySlot } => {
-  const override = findScheduleOverride(personId, dateISO, data.overrides);
+export const resolveSchedule = ({
+  personId,
+  dateISO,
+  schedulesState
+}: {
+  personId: string;
+  dateISO: string;
+  schedulesState: ScheduleResolutionData;
+}): { source: 'override' | 'template' | 'none'; slot: ScheduleDaySlot } => {
+  const override = findScheduleOverride(personId, dateISO, schedulesState.overrides);
   if (override) {
     return { source: 'override', slot: { start: override.start, end: override.end } };
   }
 
-  const assignment = data.personSchedules.find((item) => item.personId === personId);
-  const template = data.templates.find((item) => item.id === assignment?.templateId);
+  const assignment = schedulesState.personSchedules.find((item) => item.personId === personId);
+  const template = schedulesState.templates.find((item) => item.id === assignment?.templateId);
 
   if (template) {
     const [year, month, day] = dateISO.split('-').map(Number);

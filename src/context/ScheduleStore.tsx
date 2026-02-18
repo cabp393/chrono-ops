@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
-import { loadScheduleData, saveScheduleData, type ScheduleData } from '../lib/scheduleStorage';
+import {
+  loadSchedules,
+  saveSchedules,
+  SCHEDULE_STORAGE_KEYS,
+  type ScheduleData
+} from '../lib/scheduleStorage';
 import { loadData, saveData } from '../lib/storage';
 import { startOfWeekMonday } from '../lib/dateUtils';
 import type { AppData, PersonSchedule, ScheduleOverride, ScheduleTemplate, Shift } from '../types';
@@ -33,13 +38,11 @@ type Action =
   | { type: 'saveAllSchedules'; payload: SaveAllPayload }
   | { type: 'replaceSchedules'; payload: ScheduleData };
 
-const STORAGE_KEYS = ['shiftboard_templates', 'shiftboard_personSchedules', 'shiftboard_overrides'];
-
 const todayWeekStart = startOfWeekMonday(new Date());
 
 const buildInitialState = (): ScheduleStoreState => {
   const appData = loadData(todayWeekStart);
-  const schedules = loadScheduleData(appData.people);
+  const schedules = loadSchedules(appData.people);
   return {
     appData,
     templates: schedules.templates,
@@ -87,7 +90,7 @@ export const ScheduleStoreProvider = ({ children }: { children: ReactNode }) => 
   }, [state.appData]);
 
   useEffect(() => {
-    saveScheduleData({
+    saveSchedules({
       templates: state.templates,
       personSchedules: state.personSchedules,
       overrides: state.overrides
@@ -96,8 +99,8 @@ export const ScheduleStoreProvider = ({ children }: { children: ReactNode }) => 
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (!event.key || !STORAGE_KEYS.includes(event.key)) return;
-      dispatch({ type: 'replaceSchedules', payload: loadScheduleData(state.appData.people) });
+      if (!event.key || !SCHEDULE_STORAGE_KEYS.some((key) => key === event.key)) return;
+      dispatch({ type: 'replaceSchedules', payload: loadSchedules(state.appData.people) });
     };
 
     window.addEventListener('storage', handleStorage);

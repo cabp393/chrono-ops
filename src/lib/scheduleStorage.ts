@@ -2,9 +2,15 @@ import type { Person, PersonSchedule, ScheduleOverride, ScheduleTemplate } from 
 import { addDays, startOfWeekMonday } from './dateUtils';
 import { createEmptyTemplateDays, toISODate } from './scheduleUtils';
 
-const TEMPLATES_KEY = 'shiftboard_templates';
-const PERSON_SCHEDULES_KEY = 'shiftboard_personSchedules';
-const OVERRIDES_KEY = 'shiftboard_overrides';
+export const SCHEDULE_TEMPLATES_KEY = 'shiftboard_templates';
+export const SCHEDULE_PERSON_SCHEDULES_KEY = 'shiftboard_personSchedules';
+export const SCHEDULE_OVERRIDES_KEY = 'shiftboard_overrides';
+
+export const SCHEDULE_STORAGE_KEYS = [
+  SCHEDULE_TEMPLATES_KEY,
+  SCHEDULE_PERSON_SCHEDULES_KEY,
+  SCHEDULE_OVERRIDES_KEY
+] as const;
 
 export type ScheduleData = {
   templates: ScheduleTemplate[];
@@ -101,10 +107,10 @@ const createDemoScheduleData = (people: Person[]): ScheduleData => {
   return { templates, personSchedules, overrides };
 };
 
-export const loadScheduleData = (people: Person[]): ScheduleData => {
-  const rawTemplates = parseJson<unknown[]>(localStorage.getItem(TEMPLATES_KEY), []);
-  const rawPersonSchedules = parseJson<PersonSchedule[]>(localStorage.getItem(PERSON_SCHEDULES_KEY), []);
-  const rawOverrides = parseJson<ScheduleOverride[]>(localStorage.getItem(OVERRIDES_KEY), []);
+export const loadSchedules = (people: Person[]): ScheduleData => {
+  const rawTemplates = parseJson<unknown[]>(localStorage.getItem(SCHEDULE_TEMPLATES_KEY), []);
+  const rawPersonSchedules = parseJson<PersonSchedule[]>(localStorage.getItem(SCHEDULE_PERSON_SCHEDULES_KEY), []);
+  const rawOverrides = parseJson<ScheduleOverride[]>(localStorage.getItem(SCHEDULE_OVERRIDES_KEY), []);
 
   const templates = rawTemplates.map(normalizeTemplate).filter((item): item is ScheduleTemplate => !!item);
   const personIds = new Set(people.map((item) => item.id));
@@ -123,15 +129,19 @@ export const loadScheduleData = (people: Person[]): ScheduleData => {
 
   if (templates.length === 0 && personSchedules.length === 0 && overrides.length === 0) {
     const demo = createDemoScheduleData(people);
-    saveScheduleData(demo);
+    saveSchedules(demo);
     return demo;
   }
 
   return { templates, personSchedules, overrides };
 };
 
-export const saveScheduleData = ({ templates, personSchedules, overrides }: ScheduleData) => {
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-  localStorage.setItem(PERSON_SCHEDULES_KEY, JSON.stringify(personSchedules));
-  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+export const saveSchedules = ({ templates, personSchedules, overrides }: ScheduleData) => {
+  localStorage.setItem(SCHEDULE_TEMPLATES_KEY, JSON.stringify(templates));
+  localStorage.setItem(SCHEDULE_PERSON_SCHEDULES_KEY, JSON.stringify(personSchedules));
+  localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(overrides));
 };
+
+
+export const loadScheduleData = loadSchedules;
+export const saveScheduleData = saveSchedules;

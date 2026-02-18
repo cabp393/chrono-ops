@@ -20,7 +20,11 @@ export const WeekScheduleTable = ({ personId, weekStart, templates, personSchedu
       <div className="week-day-list">
         {dates.map((date) => {
           const dateISO = toISODate(date);
-          const resolved = resolveSchedule(personId, dateISO, { templates, personSchedules, overrides });
+          const resolved = resolveSchedule({
+            personId,
+            dateISO,
+            schedulesState: { templates, personSchedules, overrides }
+          });
           const override = findScheduleOverride(personId, dateISO, overrides);
           const dayKey = getDayKey(date);
           const badge = resolved.source === 'override' ? 'Ajuste' : resolved.source === 'template' ? 'Base' : 'Libre';
