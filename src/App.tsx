@@ -45,7 +45,8 @@ function App() {
 
   const visibleShifts = useMemo(() => data.shifts.filter((shift) => {
     const start = new Date(shift.startISO);
-    const inWeek = start >= weekStart && start < addDays(weekStart, 7);
+    const end = new Date(shift.endISO);
+    const inWeek = end > weekStart && start < addDays(weekStart, 7);
     return inWeek && filteredPersonIds.has(shift.personId);
   }), [data.shifts, weekStart, filteredPersonIds]);
 

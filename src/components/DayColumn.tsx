@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import type { Function, Person, Role, Shift, ShiftLabelMode, TimeScale } from '../types';
+import type { Function, Person, Role, Shift, ShiftDaySegment, ShiftLabelMode, TimeScale } from '../types';
 import { ShiftItem } from './ShiftItem';
 
 type Props = {
-  dayShifts: Shift[];
+  daySegments: ShiftDaySegment[];
+  shiftsById: Map<string, Shift>;
   people: Person[];
   functions: Function[];
   roles: Role[];
@@ -16,7 +17,8 @@ type Props = {
 };
 
 export const DayColumn = ({
-  dayShifts,
+  daySegments,
+  shiftsById,
   people,
   functions,
   roles,
@@ -33,20 +35,20 @@ export const DayColumn = ({
   const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
 
   const withLayout = useMemo(() => {
-    const sorted = [...dayShifts].sort((a, b) => new Date(a.startISO).getTime() - new Date(b.startISO).getTime());
+    const sorted = [...daySegments].sort((a, b) => new Date(a.segStartISO).getTime() - new Date(b.segStartISO).getTime());
     const active: { end: number; lane: number }[] = [];
-    return sorted.map((shift) => {
-      const start = new Date(shift.startISO).getTime();
-      const end = new Date(shift.endISO).getTime();
+    return sorted.map((segment) => {
+      const start = new Date(segment.segStartISO).getTime();
+      const end = new Date(segment.segEndISO).getTime();
       for (let i = active.length - 1; i >= 0; i -= 1) if (active[i].end <= start) active.splice(i, 1);
       const occupied = new Set(active.map((slot) => slot.lane));
       let lane = 0;
       while (occupied.has(lane)) lane += 1;
       active.push({ end, lane });
       const overlap = active.length;
-      return { shift, lane, overlap };
+      return { segment, lane, overlap };
     });
-  }, [dayShifts]);
+  }, [daySegments]);
 
   return (
     <div className="day-column" style={{ height: dayHeight, gridTemplateRows: `repeat(${(24 * 60) / scale}, ${blockHeight}px)` }}>
@@ -57,9 +59,12 @@ export const DayColumn = ({
         />
       ))}
 
-      {withLayout.map(({ shift, lane, overlap }) => {
-        const start = new Date(shift.startISO);
-        const end = new Date(shift.endISO);
+      {withLayout.map(({ segment, lane, overlap }) => {
+        const shift = shiftsById.get(segment.shiftId);
+        if (!shift) return null;
+
+        const start = new Date(segment.segStartISO);
+        const end = new Date(segment.segEndISO);
         const top = ((start.getHours() * 60 + start.getMinutes()) / scale) * blockHeight;
         const height = Math.max((((end.getTime() - start.getTime()) / 60000) / scale) * blockHeight, blockHeight * 0.75);
         const width = `${100 / Math.max(overlap, 1)}%`;
@@ -70,7 +75,7 @@ export const DayColumn = ({
 
         return (
           <ShiftItem
-            key={shift.id}
+            key={`${segment.shiftId}-${segment.segStartISO}`}
             shift={shift}
             person={person}
             functionInfo={functionInfo}

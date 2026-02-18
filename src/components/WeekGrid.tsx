@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Function, Person, Role, Shift, ShiftLabelMode, TimeScale } from '../types';
+import type { Function, Person, Role, Shift, ShiftDaySegment, ShiftLabelMode, TimeScale } from '../types';
 import { addDays, formatDayHeader, isSameDay } from '../lib/dateUtils';
+import { splitShiftByDay, toDayKey } from '../lib/shiftSegments';
 import { DayColumn } from './DayColumn';
 import { TimeAxis } from './TimeAxis';
 
@@ -34,13 +35,21 @@ export const WeekGrid = ({
   const blockHeight = BLOCK_HEIGHT[scale];
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const dayShifts = useMemo(
-    () => Array.from({ length: 7 }, (_, d) => {
-      const day = addDays(weekStart, d);
-      return shifts.filter((s) => isSameDay(new Date(s.startISO), day));
-    }),
-    [shifts, weekStart]
-  );
+  const dayShifts = useMemo(() => {
+    const keys = Array.from({ length: 7 }, (_, dayIndex) => toDayKey(addDays(weekStart, dayIndex)));
+    const byDay = new Map<string, ShiftDaySegment[]>(keys.map((key) => [key, []]));
+
+    shifts.forEach((shift) => {
+      splitShiftByDay(shift).forEach((segment) => {
+        const slot = byDay.get(segment.dayKey);
+        if (slot) slot.push(segment);
+      });
+    });
+
+    return keys.map((key) => byDay.get(key) ?? []);
+  }, [shifts, weekStart]);
+
+  const shiftsById = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift])), [shifts]);
 
   useEffect(() => {
     if (!focusBlock || !gridRef.current) return;
@@ -63,12 +72,13 @@ export const WeekGrid = ({
         <div className="sticky-left"><TimeAxis scale={scale} blockHeight={blockHeight} /></div>
         {dayShifts.map((list, dayIdx) => {
           const dayDate = addDays(weekStart, dayIdx);
-          const key = `${dayDate.getFullYear()}-${dayDate.getMonth()}-${dayDate.getDate()}`;
+          const key = toDayKey(dayDate);
           const coverage = coverageTotals[key] ?? [];
           return (
             <DayColumn
               key={dayIdx}
-              dayShifts={list}
+              daySegments={list}
+              shiftsById={shiftsById}
               people={people}
               functions={functions}
               roles={roles}
