@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AppliedFilters, Function, Person, Role } from '../types';
+import { TIME_SCALE_OPTIONS, scaleLabel } from '../lib/timeScale';
+import type { AppliedFilters, Function, Person, Role, TimeScale } from '../types';
 import { FilterFooter } from './filters/FilterFooter';
 import { FilterPill } from './filters/FilterPill';
 import { FilterSection } from './filters/FilterSection';
@@ -12,12 +13,14 @@ type Props = {
   appliedFilters: AppliedFilters;
   showLabels: boolean;
   onlyGaps: boolean;
+  scale: TimeScale;
   open: boolean;
   onClose: () => void;
   onApplyFilters: (filters: AppliedFilters) => void;
   onResetFilters: () => void;
   onToggleLabels: (value: boolean) => void;
   onToggleGaps: (value: boolean) => void;
+  onScaleChange: (value: TimeScale) => void;
 };
 
 const norm = (value: string) => value.trim().toLowerCase();
@@ -29,18 +32,25 @@ export const FiltersPanel = ({
   appliedFilters,
   showLabels,
   onlyGaps,
+  scale,
   open,
   onClose,
   onApplyFilters,
   onResetFilters,
   onToggleLabels,
-  onToggleGaps
+  onToggleGaps,
+  onScaleChange
 }: Props) => {
   const [draft, setDraft] = useState<AppliedFilters>(appliedFilters);
 
   useEffect(() => {
     setDraft(appliedFilters);
   }, [appliedFilters]);
+
+  useEffect(() => {
+    document.body.classList.toggle('drawer-open', open);
+    return () => document.body.classList.remove('drawer-open');
+  }, [open]);
 
   const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
 
@@ -110,7 +120,7 @@ export const FiltersPanel = ({
         <h3>Filtros</h3>
         <div className="filters-head-actions">
           {hasUnsavedChanges && <span className="pending-badge">Cambios sin aplicar</span>}
-          <button type="button" className="ghost mobile-only" onClick={handleClose}>Cerrar</button>
+          <button type="button" className="ghost" onClick={handleClose}>Cerrar</button>
         </div>
       </div>
 
@@ -120,6 +130,21 @@ export const FiltersPanel = ({
           onChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
           onClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
         />
+
+        <FilterSection title="Vista">
+          <div className="pill-grid">
+            {TIME_SCALE_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`filter-pill ${scale === option ? 'active' : ''}`}
+                onClick={() => onScaleChange(option)}
+              >
+                <span>{scaleLabel(option).replace(' min', 'm').replace(' h', 'h')}</span>
+              </button>
+            ))}
+          </div>
+        </FilterSection>
 
         <FilterSection title="Rol">
           <div className="pill-grid">

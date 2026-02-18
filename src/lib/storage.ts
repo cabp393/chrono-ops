@@ -1,7 +1,10 @@
 import type { AppData, Function, Person, Role, Shift } from '../types';
+import { clampScale } from './timeScale';
+import type { TimeScale } from '../types';
 
 const STORAGE_KEY = 'shiftboard:data:v2';
 const LEGACY_STORAGE_KEY = 'shiftboard:data:v1';
+const VIEW_SCALE_KEY = 'shiftboard:view:timeScale';
 
 type LegacyPerson = {
   id: string;
@@ -175,4 +178,16 @@ export const saveData = (data: AppData) => {
     shifts: data.shifts.map(({ id, personId, startISO, endISO, etiqueta }) => ({ id, personId, startISO, endISO, etiqueta }))
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+};
+
+export const loadTimeScalePreference = (): TimeScale => {
+  const raw = localStorage.getItem(VIEW_SCALE_KEY);
+  if (!raw) return 60;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return 60;
+  return clampScale(parsed);
+};
+
+export const saveTimeScalePreference = (scale: TimeScale) => {
+  localStorage.setItem(VIEW_SCALE_KEY, String(scale));
 };

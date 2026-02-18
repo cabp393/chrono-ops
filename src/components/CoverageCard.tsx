@@ -24,6 +24,11 @@ export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, active
     [coverage]
   );
   const maxTotal = Math.max(...weekBlocks.map((b) => b.total), 1);
+  const compactRoleLabel = (name: string, count: number) => {
+    const clean = name.trim();
+    const short = clean.length > 10 ? `${clean.slice(0, 1)} ${count}` : `${clean} ${count}`;
+    return clean.length > 14 ? short : `${clean} ${count}`;
+  };
 
   return (
     <section className="card coverage-card">
@@ -38,16 +43,18 @@ export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, active
         </div>
       </div>
 
-      <div className="chip-row">
-        {roles.map((role) => {
-          const active = activeRoleIds.size === 0 || activeRoleIds.has(role.id);
-          return (
-            <span key={role.id} className={`chip ${active ? 'active' : 'muted'}`} style={{ borderColor: role.color, color: role.color }}>
-              {role.nombre}: {roleTotals[role.id] || 0}
-            </span>
-          );
-        })}
-      </div>
+      {view === 'role' && (
+        <div className="chip-row">
+          {roles.map((role) => {
+            const active = activeRoleIds.size === 0 || activeRoleIds.has(role.id);
+            return (
+              <span key={role.id} className={`chip ${active ? 'active' : 'muted'}`} style={{ borderColor: role.color, color: role.color }}>
+                {role.nombre}: {roleTotals[role.id] || 0}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {view === 'total' ? (
         <div className="heatbar">
@@ -76,7 +83,9 @@ export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, active
             );
             return (
               <div key={role.id} className="role-row">
-                <span>{role.nombre}</span>
+                <span className="chip role-chip" style={{ borderColor: role.color, color: role.color }} title={`${role.nombre} ${roleTotals[role.id] || 0}`}>
+                  {compactRoleLabel(role.nombre, roleTotals[role.id] || 0)}
+                </span>
                 <div className="role-row-bars">
                   {coverage.flatMap((day, dayIndex) => day.blocks.map((block, blockIndex) => {
                     const value = block.byRole[role.id] || 0;

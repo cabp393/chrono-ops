@@ -7,8 +7,7 @@ import { WeekGrid } from './components/WeekGrid';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
 import { buildFunctionMap, buildPersonMap, buildRoleMap, getShiftRole } from './lib/relations';
-import { loadData, saveData } from './lib/storage';
-import { clampScale } from './lib/timeScale';
+import { loadData, loadTimeScalePreference, saveData, saveTimeScalePreference } from './lib/storage';
 import type { AppliedFilters, Shift, TimeScale } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
@@ -17,7 +16,7 @@ const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds
 function App() {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [data, setData] = useState(() => loadData(todayWeekStart));
-  const [scale, setScale] = useState<TimeScale>(60);
+  const [scale, setScale] = useState<TimeScale>(() => loadTimeScalePreference());
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
   const [onlyGaps, setOnlyGaps] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
@@ -87,10 +86,6 @@ function App() {
         onPrevWeek={() => setWeekStart(addDays(weekStart, -7))}
         onCurrentWeek={() => setWeekStart(todayWeekStart)}
         onNextWeek={() => setWeekStart(addDays(weekStart, 7))}
-        scale={scale}
-        onScaleDown={() => setScale(clampScale(scale - 1))}
-        onScaleUp={() => setScale(clampScale(scale + 1))}
-        onScaleChange={setScale}
         onAddShift={() => { setEditing(null); setModalOpen(true); }}
         onOpenFilters={() => setFiltersOpen(true)}
       />
@@ -128,12 +123,17 @@ function App() {
           appliedFilters={filters}
           showLabels={showLabels}
           onlyGaps={onlyGaps}
+          scale={scale}
           open={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           onApplyFilters={setFilters}
           onResetFilters={() => setFilters(EMPTY_FILTERS)}
           onToggleLabels={setShowLabels}
           onToggleGaps={setOnlyGaps}
+          onScaleChange={(nextScale) => {
+            setScale(nextScale);
+            saveTimeScalePreference(nextScale);
+          }}
         />
       </main>
 
