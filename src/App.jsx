@@ -8,13 +8,21 @@ import {
   targetHoursForMode
 } from './engine.js';
 import { createStorageAdapter } from './storage.js';
+import { useSileoToast } from './lib/sileoToast.jsx';
 
 const storage = createStorageAdapter();
 const TARGET_TOLERANCE = 0.25;
 
 export default function App() {
-  const [scenario, setScenario] = useState(() => storage.getScenario() || defaultScenario());
-  const [schedule, setSchedule] = useState(() => storage.getSchedule() || defaultSchedule(storage.getScenario() || defaultScenario()));
+  const toast = useSileoToast();
+  const [scenario, setScenario] = useState(() => {
+    const storedScenario = storage.getScenario();
+    return storedScenario || defaultScenario();
+  });
+  const [schedule, setSchedule] = useState(() => {
+    const storedScenario = storage.getScenario() || defaultScenario();
+    return storage.getSchedule() || defaultSchedule(storedScenario);
+  });
   const [snapshots, setSnapshots] = useState(() => storage.getSnapshots());
   const [activeTab, setActiveTab] = useState('config');
   const [selectedDay, setSelectedDay] = useState(0);
@@ -67,11 +75,13 @@ export default function App() {
     const next = [item, ...snapshots].slice(0, 20);
     setSnapshots(next);
     storage.setSnapshots(next);
+    toast.success('Snapshot guardado');
   };
 
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(storage.exportAll(), null, 2)], { type: 'application/json' });
     downloadBlob(blob, `${slug(scenario.name)}.json`);
+    toast.info('Export JSON generado');
   };
 
   const exportCSV = () => {
@@ -81,28 +91,39 @@ export default function App() {
     }
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
     downloadBlob(blob, `${slug(scenario.name)}.csv`);
+    toast.info('Export CSV generado');
   };
 
   const handleJSONImport = async (file) => {
-    const text = await file.text();
-    const payload = JSON.parse(text);
-    storage.importAll(payload);
-    const nextScenario = storage.getScenario() || defaultScenario();
-    const nextSchedule = storage.getSchedule() || { assignments: [] };
-    const nextSnapshots = storage.getSnapshots();
-    setScenario(nextScenario);
-    setSchedule(nextSchedule);
-    setSnapshots(nextSnapshots);
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      storage.importAll(payload);
+      const nextScenario = storage.getScenario() || defaultScenario();
+      const nextSchedule = storage.getSchedule() || { assignments: [] };
+      const nextSnapshots = storage.getSnapshots();
+      setScenario(nextScenario);
+      setSchedule(nextSchedule);
+      setSnapshots(nextSnapshots);
+      toast.success('Import JSON completado');
+    } catch {
+      toast.error('No se pudo importar el JSON');
+    }
   };
 
   const handleCSVImport = async (file) => {
-    const text = await file.text();
-    const rows = text.split(/\r?\n/).filter(Boolean);
-    const assignments = rows.slice(1).map((line) => {
-      const [personId, dayIndex, shiftId, areaId] = line.split(',');
-      return { personId, dayIndex: Number(dayIndex), shiftId, areaId };
-    });
-    persistSchedule({ assignments });
+    try {
+      const text = await file.text();
+      const rows = text.split(/\r?\n/).filter(Boolean);
+      const assignments = rows.slice(1).map((line) => {
+        const [personId, dayIndex, shiftId, areaId] = line.split(',');
+        return { personId, dayIndex: Number(dayIndex), shiftId, areaId };
+      });
+      persistSchedule({ assignments });
+      toast.success('Import CSV completado');
+    } catch {
+      toast.error('No se pudo importar el CSV');
+    }
   };
 
   return (
