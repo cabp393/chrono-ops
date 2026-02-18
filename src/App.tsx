@@ -5,19 +5,20 @@ import { HeaderBar } from './components/HeaderBar';
 import { ShiftModal } from './components/ShiftModal';
 import { WeekGrid } from './components/WeekGrid';
 import { calculateCoverage } from './lib/coverageCalc';
-import { addDays, formatDayHeader, formatWeekRange, formatHour, startOfWeekMonday } from './lib/dateUtils';
+import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
+import { buildFunctionMap, buildPersonMap, buildRoleMap, getShiftRole } from './lib/relations';
 import { loadData, saveData } from './lib/storage';
 import { clampScale } from './lib/timeScale';
-import type { Shift, TimeScale } from './types';
+import type { AppliedFilters, Shift, TimeScale } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
+const EMPTY_FILTERS: AppliedFilters = { searchText: '', roleIds: [], functionIds: [] };
 
 function App() {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [data, setData] = useState(() => loadData(todayWeekStart));
   const [scale, setScale] = useState<TimeScale>(60);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [personQuery, setPersonQuery] = useState('');
+  const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
   const [onlyGaps, setOnlyGaps] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -25,44 +26,47 @@ function App() {
   const [focusBlock, setFocusBlock] = useState<{ dayIndex: number; blockIndex: number } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const peopleFiltered = useMemo(
-    () => data.people.filter((person) => person.nombre.toLowerCase().includes(personQuery.toLowerCase())),
-    [data.people, personQuery]
-  );
-  const peopleSet = new Set(peopleFiltered.map((person) => person.id));
+  const peopleById = useMemo(() => buildPersonMap(data.people), [data.people]);
+  const functionsById = useMemo(() => buildFunctionMap(data.functions), [data.functions]);
+  const rolesById = useMemo(() => buildRoleMap(data.roles), [data.roles]);
+
+  const filteredPersonIds = useMemo(() => {
+    const search = filters.searchText.trim().toLowerCase();
+    return new Set(data.people.filter((person) => {
+      const fn = functionsById.get(person.functionId);
+      const roleOk = filters.roleIds.length === 0 || (fn ? filters.roleIds.includes(fn.roleId) : false);
+      const functionOk = filters.functionIds.length === 0 || filters.functionIds.includes(person.functionId);
+      const searchOk = !search || person.nombre.toLowerCase().includes(search) || (fn?.nombre.toLowerCase().includes(search) ?? false);
+      return roleOk && functionOk && searchOk;
+    }).map((person) => person.id));
+  }, [data.people, functionsById, filters]);
 
   const visibleShifts = useMemo(() => data.shifts.filter((shift) => {
     const start = new Date(shift.startISO);
     const inWeek = start >= weekStart && start < addDays(weekStart, 7);
-    const roleOk = selectedRoles.length === 0 || selectedRoles.includes(shift.rolId);
-    const personOk = peopleSet.has(shift.personId);
-    return inWeek && roleOk && personOk;
-  }), [data.shifts, weekStart, selectedRoles, peopleSet]);
+    return inWeek && filteredPersonIds.has(shift.personId);
+  }), [data.shifts, weekStart, filteredPersonIds]);
 
-  const coverage = useMemo(() => calculateCoverage(weekStart, visibleShifts, data.roles, scale), [weekStart, visibleShifts, data.roles, scale]);
+  const shiftRoleId = (shift: Shift) => getShiftRole(shift, peopleById, functionsById, rolesById)?.id;
+
+  const coverage = useMemo(
+    () => calculateCoverage(weekStart, visibleShifts, data.roles, scale, shiftRoleId),
+    [weekStart, visibleShifts, data.roles, scale, peopleById, functionsById, rolesById]
+  );
 
   const roleTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     visibleShifts.forEach((shift) => {
-      totals[shift.rolId] = (totals[shift.rolId] || 0) + 1;
+      const roleId = shiftRoleId(shift);
+      if (!roleId) return;
+      totals[roleId] = (totals[roleId] || 0) + 1;
     });
     return totals;
-  }, [visibleShifts]);
+  }, [visibleShifts, peopleById, functionsById, rolesById]);
 
   const activePeople = useMemo(() => new Set(visibleShifts.map((shift) => shift.personId)).size, [visibleShifts]);
 
   const coverageTotals = Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]));
-
-  const metrics = useMemo(() => {
-    const list = coverage.flatMap((day, dayIndex) => day.blocks.map((block, blockIndex) => ({ block, dayIndex, blockIndex, dayDate: day.dayDate })));
-    if (list.length === 0) return [{ label: 'Máx cobertura (bloque)', value: 'N/A' }, { label: 'Min cobertura (bloque)', value: 'N/A' }];
-    const max = list.reduce((prev, current) => (current.block.total > prev.block.total ? current : prev), list[0]);
-    const min = list.reduce((prev, current) => (current.block.total < prev.block.total ? current : prev), list[0]);
-    return [
-      { label: 'Máx cobertura (bloque)', value: `${max.block.total} · ${formatDayHeader(max.dayDate)} ${formatHour(max.block.start)}` },
-      { label: 'Min cobertura (bloque)', value: `${min.block.total} · ${formatDayHeader(min.dayDate)} ${formatHour(min.block.start)}` }
-    ];
-  }, [coverage]);
 
   const persist = (nextShifts: Shift[]) => {
     const next = { ...data, shifts: nextShifts };
@@ -98,12 +102,14 @@ function App() {
             coverage={coverage}
             activePeople={activePeople}
             roleTotals={roleTotals}
+            activeRoleIds={new Set(filters.roleIds)}
             onFocusBlock={(dayIndex, blockIndex) => setFocusBlock({ dayIndex, blockIndex })}
           />
           <WeekGrid
             weekStart={weekStart}
             shifts={visibleShifts}
             people={data.people}
+            functions={data.functions}
             roles={data.roles}
             scale={scale}
             coverageTotals={coverageTotals}
@@ -117,18 +123,17 @@ function App() {
 
         <FiltersPanel
           roles={data.roles}
-          people={peopleFiltered}
-          selectedRoles={selectedRoles}
-          personQuery={personQuery}
-          onlyGaps={onlyGaps}
+          functions={data.functions}
+          people={data.people}
+          appliedFilters={filters}
           showLabels={showLabels}
-          metrics={metrics}
+          onlyGaps={onlyGaps}
           open={filtersOpen}
           onClose={() => setFiltersOpen(false)}
-          onPersonQuery={setPersonQuery}
-          onToggleGaps={setOnlyGaps}
+          onApplyFilters={setFilters}
+          onResetFilters={() => setFilters(EMPTY_FILTERS)}
           onToggleLabels={setShowLabels}
-          onToggleRole={(id) => setSelectedRoles((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])}
+          onToggleGaps={setOnlyGaps}
         />
       </main>
 
@@ -136,7 +141,8 @@ function App() {
         open={modalOpen}
         editing={editing}
         onClose={() => setModalOpen(false)}
-        people={peopleFiltered}
+        people={data.people}
+        functions={data.functions}
         roles={data.roles}
         onSave={(shift) => {
           const exists = data.shifts.some((item) => item.id === shift.id);

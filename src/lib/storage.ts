@@ -1,59 +1,168 @@
-import type { AppData } from '../types';
+import type { AppData, Function, Person, Role, Shift } from '../types';
 
-const STORAGE_KEY = 'shiftboard:data:v1';
+const STORAGE_KEY = 'shiftboard:data:v2';
+const LEGACY_STORAGE_KEY = 'shiftboard:data:v1';
 
-const demoData: AppData = {
-  roles: [
-    { id: 'picker', nombre: 'Picker', color: '#60a5fa' },
-    { id: 'packing', nombre: 'Packing', color: '#4ade80' },
-    { id: 'supervisor', nombre: 'Supervisor', color: '#a78bfa' }
-  ],
-  people: [
-    { id: 'p1', nombre: 'Ana Pérez', rolId: 'picker' },
-    { id: 'p2', nombre: 'Luis Ríos', rolId: 'picker' },
-    { id: 'p3', nombre: 'Marta Díaz', rolId: 'picker' },
-    { id: 'p4', nombre: 'Sergio Mora', rolId: 'packing' },
-    { id: 'p5', nombre: 'Nora Vega', rolId: 'packing' },
-    { id: 'p6', nombre: 'Javier Sol', rolId: 'packing' },
-    { id: 'p7', nombre: 'Carla Soto', rolId: 'supervisor' },
-    { id: 'p8', nombre: 'Diego Paz', rolId: 'supervisor' }
-  ],
-  shifts: []
+type LegacyPerson = {
+  id: string;
+  nombre: string;
+  rolId?: string;
+  functionId?: string;
 };
 
-const seedShifts = (baseMonday: Date) => {
-  const mk = (dayOffset: number, startH: number, startM: number, endH: number, endM: number, personId: string, rolId: string, etiqueta?: string) => {
+type LegacyShift = {
+  id: string;
+  personId: string;
+  rolId?: string;
+  startISO: string;
+  endISO: string;
+  etiqueta?: string;
+};
+
+type LegacyData = {
+  roles: Role[];
+  functions?: Function[];
+  people: LegacyPerson[];
+  shifts: LegacyShift[];
+};
+
+const demoRoles: Role[] = [
+  { id: 'picker', nombre: 'Picker', color: '#60a5fa' },
+  { id: 'packing', nombre: 'Packing', color: '#4ade80' },
+  { id: 'supervisor', nombre: 'Supervisor', color: '#a78bfa' }
+];
+
+const demoFunctions: Function[] = [
+  { id: 'fn-picker', roleId: 'picker', nombre: 'Picker' },
+  { id: 'fn-picker-senior', roleId: 'picker', nombre: 'Picker Senior' },
+  { id: 'fn-packing', roleId: 'packing', nombre: 'Packing' },
+  { id: 'fn-packing-qa', roleId: 'packing', nombre: 'Packing QA' },
+  { id: 'fn-supervisor', roleId: 'supervisor', nombre: 'Supervisor' },
+  { id: 'fn-lider-turno', roleId: 'supervisor', nombre: 'Líder Turno' }
+];
+
+const demoPeople: Person[] = [
+  { id: 'p1', nombre: 'Ana Pérez', functionId: 'fn-picker' },
+  { id: 'p2', nombre: 'Luis Ríos', functionId: 'fn-picker-senior' },
+  { id: 'p3', nombre: 'Marta Díaz', functionId: 'fn-picker' },
+  { id: 'p4', nombre: 'Sergio Mora', functionId: 'fn-packing' },
+  { id: 'p5', nombre: 'Nora Vega', functionId: 'fn-packing-qa' },
+  { id: 'p6', nombre: 'Javier Sol', functionId: 'fn-packing' },
+  { id: 'p7', nombre: 'Carla Soto', functionId: 'fn-supervisor' },
+  { id: 'p8', nombre: 'Diego Paz', functionId: 'fn-lider-turno' }
+];
+
+const seedShifts = (baseMonday: Date): Shift[] => {
+  const mk = (dayOffset: number, startH: number, startM: number, endH: number, endM: number, personId: string, etiqueta?: string) => {
     const start = new Date(baseMonday);
     start.setDate(start.getDate() + dayOffset);
     start.setHours(startH, startM, 0, 0);
     const end = new Date(baseMonday);
     end.setDate(end.getDate() + dayOffset);
     end.setHours(endH, endM, 0, 0);
-    return { id: crypto.randomUUID(), personId, rolId, startISO: start.toISOString(), endISO: end.toISOString(), etiqueta };
+    return { id: crypto.randomUUID(), personId, startISO: start.toISOString(), endISO: end.toISOString(), etiqueta };
   };
 
   return [
-    mk(0, 6, 0, 14, 0, 'p1', 'picker', 'Recepción'), mk(0, 8, 0, 16, 0, 'p2', 'picker'), mk(0, 11, 30, 20, 0, 'p4', 'packing'), mk(0, 9, 0, 18, 0, 'p7', 'supervisor'),
-    mk(1, 6, 0, 14, 0, 'p3', 'picker'), mk(1, 10, 0, 18, 0, 'p5', 'packing'), mk(1, 12, 0, 20, 0, 'p6', 'packing', 'Picos'), mk(1, 9, 0, 18, 0, 'p8', 'supervisor'),
-    mk(2, 7, 0, 15, 0, 'p1', 'picker'), mk(2, 8, 0, 16, 0, 'p2', 'picker'), mk(2, 14, 0, 22, 0, 'p4', 'packing'), mk(2, 9, 0, 18, 0, 'p7', 'supervisor'),
-    mk(3, 0, 30, 7, 0, 'p8', 'supervisor', 'Nocturno'), mk(3, 0, 30, 7, 0, 'p4', 'packing', 'Nocturno'), mk(3, 6, 0, 14, 0, 'p3', 'picker'),
-    mk(4, 6, 0, 14, 0, 'p1', 'picker'), mk(4, 12, 0, 20, 0, 'p6', 'packing'), mk(4, 9, 0, 18, 0, 'p7', 'supervisor'),
-    mk(5, 8, 0, 14, 0, 'p2', 'picker'), mk(5, 9, 0, 17, 0, 'p4', 'packing'), mk(5, 8, 0, 16, 0, 'p8', 'supervisor'), mk(5, 8, 30, 16, 30, 'p3', 'picker'),
-    mk(6, 8, 0, 13, 0, 'p3', 'picker'), mk(6, 10, 0, 16, 0, 'p5', 'packing')
+    mk(0, 6, 0, 14, 0, 'p1', 'Recepción'), mk(0, 8, 0, 16, 0, 'p2'), mk(0, 11, 30, 20, 0, 'p4'), mk(0, 9, 0, 18, 0, 'p7'),
+    mk(1, 6, 0, 14, 0, 'p3'), mk(1, 10, 0, 18, 0, 'p5'), mk(1, 12, 0, 20, 0, 'p6', 'Picos'), mk(1, 9, 0, 18, 0, 'p8'),
+    mk(2, 7, 0, 15, 0, 'p1'), mk(2, 8, 0, 16, 0, 'p2'), mk(2, 14, 0, 22, 0, 'p4'), mk(2, 9, 0, 18, 0, 'p7'),
+    mk(3, 0, 30, 7, 0, 'p8', 'Nocturno'), mk(3, 0, 30, 7, 0, 'p4', 'Nocturno'), mk(3, 6, 0, 14, 0, 'p3'),
+    mk(4, 6, 0, 14, 0, 'p1'), mk(4, 12, 0, 20, 0, 'p6'), mk(4, 9, 0, 18, 0, 'p7'),
+    mk(5, 8, 0, 14, 0, 'p2'), mk(5, 9, 0, 17, 0, 'p4'), mk(5, 8, 0, 16, 0, 'p8'), mk(5, 8, 30, 16, 30, 'p3'),
+    mk(6, 8, 0, 13, 0, 'p3'), mk(6, 10, 0, 16, 0, 'p5')
   ];
 };
 
+const createDemoData = (baseMonday: Date): AppData => ({
+  roles: demoRoles,
+  functions: demoFunctions,
+  people: demoPeople,
+  shifts: seedShifts(baseMonday)
+});
+
+const migrateLegacyData = (legacy: LegacyData): AppData => {
+  const roles = legacy.roles ?? [];
+
+  const existingFunctions = legacy.functions ?? [];
+  const roleToAutoFunction = new Map<string, string>();
+  const functions: Function[] = existingFunctions.length > 0
+    ? existingFunctions
+    : roles.map((role) => {
+      const id = `fn-${role.id}`;
+      roleToAutoFunction.set(role.id, id);
+      return { id, roleId: role.id, nombre: role.nombre };
+    });
+
+  if (existingFunctions.length > 0) {
+    roles.forEach((role) => {
+      const first = existingFunctions.find((fn) => fn.roleId === role.id);
+      if (first) roleToAutoFunction.set(role.id, first.id);
+    });
+  }
+
+  const people: Person[] = legacy.people.map((person) => {
+    const functionId = person.functionId
+      ?? (person.rolId ? roleToAutoFunction.get(person.rolId) : undefined)
+      ?? functions[0]?.id
+      ?? '';
+    return { id: person.id, nombre: person.nombre, functionId };
+  });
+
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+
+  const shifts: Shift[] = legacy.shifts.map((shift) => {
+    const person = peopleById.get(shift.personId);
+    if (!person && shift.rolId && !roleToAutoFunction.has(shift.rolId)) {
+      const role = roles.find((item) => item.id === shift.rolId);
+      if (role) {
+        const autoFunctionId = `fn-${role.id}`;
+        roleToAutoFunction.set(role.id, autoFunctionId);
+        functions.push({ id: autoFunctionId, roleId: role.id, nombre: role.nombre });
+      }
+    }
+    return {
+      id: shift.id,
+      personId: shift.personId,
+      startISO: shift.startISO,
+      endISO: shift.endISO,
+      etiqueta: shift.etiqueta
+    };
+  });
+
+  return { roles, functions, people, shifts };
+};
+
+const parsePayload = (raw: string): AppData | null => {
+  try {
+    const parsed = JSON.parse(raw) as LegacyData;
+    if (!parsed || !Array.isArray(parsed.roles) || !Array.isArray(parsed.people) || !Array.isArray(parsed.shifts)) {
+      return null;
+    }
+    return migrateLegacyData(parsed);
+  } catch {
+    return null;
+  }
+};
+
 export const loadData = (baseMonday: Date): AppData => {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try {
-      return JSON.parse(raw) as AppData;
-    } catch {
-      // fallback demo
+  const current = localStorage.getItem(STORAGE_KEY);
+  if (current) {
+    const parsed = parsePayload(current);
+    if (parsed) return parsed;
+  }
+
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (legacy) {
+    const migrated = parsePayload(legacy);
+    if (migrated) {
+      saveData(migrated);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      return migrated;
     }
   }
 
-  const seeded = { ...demoData, shifts: seedShifts(baseMonday) };
+  const seeded = createDemoData(baseMonday);
   saveData(seeded);
   return seeded;
 };
@@ -61,8 +170,9 @@ export const loadData = (baseMonday: Date): AppData => {
 export const saveData = (data: AppData) => {
   const payload: AppData = {
     roles: data.roles,
+    functions: data.functions,
     people: data.people,
-    shifts: data.shifts.map(({ id, personId, rolId, startISO, endISO, etiqueta }) => ({ id, personId, rolId, startISO, endISO, etiqueta }))
+    shifts: data.shifts.map(({ id, personId, startISO, endISO, etiqueta }) => ({ id, personId, startISO, endISO, etiqueta }))
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 };
