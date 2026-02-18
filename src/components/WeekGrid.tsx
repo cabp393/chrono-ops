@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Function, Person, Role, Shift, TimeScale } from '../types';
+import type { Function, Person, Role, Shift, ShiftLabelMode, TimeScale } from '../types';
 import { addDays, formatDayHeader, isSameDay } from '../lib/dateUtils';
 import { DayColumn } from './DayColumn';
 import { TimeAxis } from './TimeAxis';
@@ -17,6 +17,7 @@ type Props = {
   onlyGaps: boolean;
   focusBlock: { dayIndex: number; blockIndex: number } | null;
   showLabels: boolean;
+  shiftLabelMode: ShiftLabelMode;
 };
 
 const BLOCK_HEIGHT: Record<TimeScale, number> = { 30: 30, 60: 25, 120: 21, 180: 19, 240: 17, 360: 16 };
@@ -33,7 +34,8 @@ export const WeekGrid = ({
   onDuplicateShift,
   onlyGaps,
   focusBlock,
-  showLabels
+  showLabels,
+  shiftLabelMode
 }: Props) => {
   const blockHeight = BLOCK_HEIGHT[scale];
   const gridRef = useRef<HTMLDivElement>(null);
@@ -83,6 +85,7 @@ export const WeekGrid = ({
               onlyGaps={onlyGaps}
               focusBlockIndex={focusBlock?.dayIndex === dayIdx ? focusBlock.blockIndex : null}
               showLabels={showLabels}
+              shiftLabelMode={shiftLabelMode}
               onShiftClick={onShiftClick}
               onDuplicateShift={onDuplicateShift}
             />

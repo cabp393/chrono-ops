@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Function, Person, Role, Shift, TimeScale } from '../types';
+import type { Function, Person, Role, Shift, ShiftLabelMode, TimeScale } from '../types';
 import { ShiftItem } from './ShiftItem';
 
 type Props = {
@@ -14,6 +14,7 @@ type Props = {
   onlyGaps: boolean;
   focusBlockIndex: number | null;
   showLabels: boolean;
+  shiftLabelMode: ShiftLabelMode;
   onShiftClick: (shift: Shift) => void;
   onDuplicateShift: (shift: Shift) => void;
 };
@@ -29,6 +30,7 @@ export const DayColumn = ({
   onlyGaps,
   focusBlockIndex,
   showLabels,
+  shiftLabelMode,
   onShiftClick,
   onDuplicateShift
 }: Props) => {
@@ -87,6 +89,7 @@ export const DayColumn = ({
             onClick={onShiftClick}
             onDuplicate={onDuplicateShift}
             showLabel={showLabels}
+            shiftLabelMode={shiftLabelMode}
             style={{ top, height, width, left }}
           />
         );
