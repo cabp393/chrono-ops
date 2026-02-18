@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AppliedFilters, Function, Person, Role } from '../types';
+import { FilterFooter } from './filters/FilterFooter';
+import { FilterPill } from './filters/FilterPill';
+import { FilterSection } from './filters/FilterSection';
+import { SearchInput } from './filters/SearchInput';
 
 type Props = {
   roles: Role[];
@@ -79,11 +83,6 @@ export const FiltersPanel = ({
   }, [functions]);
 
   const visibleRoleIds = roleScope ? Array.from(roleScope) : roles.map((role) => role.id);
-  const outOfRoleSelections = draft.functionIds.filter((functionId) => {
-    const fn = functionsById.get(functionId);
-    return !!(fn && roleScope && !roleScope.has(fn.roleId));
-  });
-
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(appliedFilters);
 
   const toggleRole = (id: string) => {
@@ -100,93 +99,104 @@ export const FiltersPanel = ({
     }));
   };
 
+  const handleClose = () => {
+    setDraft(appliedFilters);
+    onClose();
+  };
+
   return (
     <aside className={`filters-panel ${open ? 'open' : ''}`}>
-      <div className="filters-head compact">
+      <div className="filters-head">
         <h3>Filtros</h3>
         <div className="filters-head-actions">
           {hasUnsavedChanges && <span className="pending-badge">Cambios sin aplicar</span>}
-          <button className="ghost mobile-only" onClick={onClose}>Cerrar</button>
+          <button type="button" className="ghost mobile-only" onClick={handleClose}>Cerrar</button>
         </div>
       </div>
 
       <div className="filters-scroll">
-        <section className="filters-section">
-          <input
-            value={draft.searchText}
-            onChange={(e) => setDraft((prev) => ({ ...prev, searchText: e.target.value }))}
-            placeholder="Buscar por nombre o función…"
-          />
-          {draft.searchText && <button className="clear-search" onClick={() => setDraft((prev) => ({ ...prev, searchText: '' }))}>×</button>}
-        </section>
+        <SearchInput
+          value={draft.searchText}
+          onChange={(value) => setDraft((prev) => ({ ...prev, searchText: value }))}
+          onClear={() => setDraft((prev) => ({ ...prev, searchText: '' }))}
+        />
 
-        <section className="filters-section">
-          <h4>Rol</h4>
-          <div className="role-list compact">
+        <FilterSection title="Rol">
+          <div className="pill-grid">
             {roles.map((role) => (
-              <label key={role.id} className="filter-row">
-                <span><i style={{ backgroundColor: role.color }} />{role.nombre} ({roleCounts[role.id] || 0})</span>
-                <input type="checkbox" checked={draft.roleIds.includes(role.id)} onChange={() => toggleRole(role.id)} />
-              </label>
+              <FilterPill
+                key={role.id}
+                label={role.nombre}
+                count={roleCounts[role.id] || 0}
+                color={role.color}
+                active={draft.roleIds.includes(role.id)}
+                onClick={() => toggleRole(role.id)}
+              />
             ))}
           </div>
-        </section>
+        </FilterSection>
 
-        <section className="filters-section">
-          <h4>Función</h4>
-          {visibleRoleIds.map((roleId) => {
-            const role = roles.find((item) => item.id === roleId);
-            const items = groupedFunctions[roleId] || [];
-            if (items.length === 0) return null;
-            return (
-              <div key={roleId} className="function-group">
-                <p>{role?.nombre ?? roleId}</p>
-                {items.map((fn) => (
-                  <label key={fn.id} className="function-item filter-row">
-                    <span>{fn.nombre} ({functionCounts[fn.id] || 0})</span>
-                    <input type="checkbox" checked={draft.functionIds.includes(fn.id)} onChange={() => toggleFunction(fn.id)} />
-                  </label>
-                ))}
-              </div>
-            );
-          })}
+        <FilterSection title="Función">
+          <div className="function-groups">
+            {visibleRoleIds.map((roleId) => {
+              const role = roles.find((item) => item.id === roleId);
+              const items = groupedFunctions[roleId] || [];
+              if (items.length === 0) return null;
+              return (
+                <div key={roleId} className="function-group">
+                  <p>{role?.nombre ?? roleId}</p>
+                  <div className="pill-grid">
+                    {items.map((fn) => (
+                      <FilterPill
+                        key={fn.id}
+                        label={fn.nombre}
+                        count={functionCounts[fn.id] || 0}
+                        color={role?.color}
+                        active={draft.functionIds.includes(fn.id)}
+                        onClick={() => toggleFunction(fn.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </FilterSection>
 
-          {outOfRoleSelections.length > 0 && (
-            <div className="function-group outside-filter">
-              <p>Fuera de filtro</p>
-              {outOfRoleSelections.map((functionId) => {
-                const fn = functionsById.get(functionId);
-                if (!fn) return null;
-                return (
-                  <label key={functionId} className="function-item filter-row disabled">
-                    <span>{fn.nombre}</span>
-                    <input type="checkbox" checked onChange={() => toggleFunction(functionId)} />
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="filters-section tight">
+        <FilterSection title="Opciones">
           <label className="switch-row">
-            Mostrar solo vacíos
-            <input type="checkbox" checked={onlyGaps} onChange={(e) => onToggleGaps(e.target.checked)} />
+            <span>Mostrar solo vacíos</span>
+            <button
+              type="button"
+              className={`switch ${onlyGaps ? 'on' : ''}`}
+              aria-pressed={onlyGaps}
+              onClick={() => onToggleGaps(!onlyGaps)}
+            >
+              <span className="switch-thumb" />
+            </button>
           </label>
-        </section>
 
-        <section className="filters-section tight">
           <label className="switch-row">
-            Mostrar etiquetas
-            <input type="checkbox" checked={showLabels} onChange={(e) => onToggleLabels(e.target.checked)} />
+            <span>Mostrar etiquetas</span>
+            <button
+              type="button"
+              className={`switch ${showLabels ? 'on' : ''}`}
+              aria-pressed={showLabels}
+              onClick={() => onToggleLabels(!showLabels)}
+            >
+              <span className="switch-thumb" />
+            </button>
           </label>
-        </section>
+        </FilterSection>
       </div>
 
-      <div className="filters-footer">
-        <button className="primary" onClick={() => onApplyFilters(draft)}>Aplicar</button>
-        <button onClick={() => { setDraft({ searchText: '', roleIds: [], functionIds: [] }); onResetFilters(); }}>Reiniciar</button>
-      </div>
+      <FilterFooter
+        onApply={() => onApplyFilters(draft)}
+        onReset={() => {
+          setDraft({ searchText: '', roleIds: [], functionIds: [] });
+          onResetFilters();
+        }}
+      />
     </aside>
   );
 };
