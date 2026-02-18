@@ -3,6 +3,7 @@ import { addDays } from './dateUtils';
 
 type DayCoverage = {
   dayKey: string;
+  dayDate: Date;
   blocks: CoverageBlock[];
 };
 
@@ -12,49 +13,54 @@ export const calculateCoverage = (
   weekStart: Date,
   shifts: Shift[],
   roles: Role[],
-  scale: TimeScale,
-  filteredRoleIds: string[]
+  scale: TimeScale
 ): DayCoverage[] => {
   const blockMs = scale * 60 * 1000;
   const totalBlocks = (24 * 60) / scale;
-  const roleSet = new Set(filteredRoleIds);
+  const roleIds = roles.map((role) => role.id);
 
-  return Array.from({ length: 7 }, (_, d) => {
-    const dayStart = addDays(weekStart, d);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = addDays(dayStart, 1);
-
-    const counts = new Array(totalBlocks).fill(0);
-    const roleCounts: Record<string, number[]> = {};
-    roles.forEach((role) => (roleCounts[role.id] = new Array(totalBlocks).fill(0)));
-
-    shifts.forEach((shift) => {
-      const shiftStart = new Date(shift.startISO);
-      const shiftEnd = new Date(shift.endISO);
-      if (shiftEnd <= dayStart || shiftStart >= dayEnd) return;
-      if (roleSet.size > 0 && !roleSet.has(shift.rolId)) return;
-
-      const s = Math.max(dayStart.getTime(), shiftStart.getTime());
-      const e = Math.min(dayEnd.getTime(), shiftEnd.getTime());
-      const startIdx = Math.floor((s - dayStart.getTime()) / blockMs);
-      const endIdx = Math.ceil((e - dayStart.getTime()) / blockMs) - 1;
-
-      for (let i = Math.max(0, startIdx); i <= Math.min(totalBlocks - 1, endIdx); i++) {
-        counts[i] += 1;
-        if (roleCounts[shift.rolId]) roleCounts[shift.rolId][i] += 1;
-      }
-    });
-
-    const blocks: CoverageBlock[] = counts.map((total, i) => {
-      const start = new Date(dayStart.getTime() + i * blockMs);
-      const end = new Date(start.getTime() + blockMs);
-      const byRole: Record<string, number> = {};
-      Object.keys(roleCounts).forEach((id) => {
-        if (roleCounts[id][i] > 0) byRole[id] = roleCounts[id][i];
-      });
-      return { start, end, total, byRole };
-    });
-
-    return { dayKey: toDayKey(dayStart), blocks };
+  const days = Array.from({ length: 7 }, (_, dayIndex) => {
+    const dayDate = addDays(weekStart, dayIndex);
+    dayDate.setHours(0, 0, 0, 0);
+    const totals = new Array(totalBlocks).fill(0);
+    const byRole = Object.fromEntries(roleIds.map((id) => [id, new Array(totalBlocks).fill(0)])) as Record<string, number[]>;
+    return { dayDate, totals, byRole };
   });
+
+  shifts.forEach((shift) => {
+    const shiftStart = new Date(shift.startISO).getTime();
+    const shiftEnd = new Date(shift.endISO).getTime();
+    if (shiftEnd <= shiftStart) return;
+
+    for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
+      const dayStart = days[dayIndex].dayDate.getTime();
+      const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+      if (shiftEnd <= dayStart || shiftStart >= dayEnd) continue;
+
+      const overlapStart = Math.max(shiftStart, dayStart);
+      const overlapEnd = Math.min(shiftEnd, dayEnd);
+      const startIdx = Math.floor((overlapStart - dayStart) / blockMs);
+      const endIdx = Math.ceil((overlapEnd - dayStart) / blockMs) - 1;
+
+      for (let i = Math.max(0, startIdx); i <= Math.min(totalBlocks - 1, endIdx); i += 1) {
+        days[dayIndex].totals[i] += 1;
+        if (days[dayIndex].byRole[shift.rolId]) days[dayIndex].byRole[shift.rolId][i] += 1;
+      }
+    }
+  });
+
+  return days.map(({ dayDate, totals, byRole }) => ({
+    dayKey: toDayKey(dayDate),
+    dayDate,
+    blocks: totals.map((total, index) => {
+      const start = new Date(dayDate.getTime() + index * blockMs);
+      const end = new Date(start.getTime() + blockMs);
+      const blockByRole: Record<string, number> = {};
+      roleIds.forEach((roleId) => {
+        const value = byRole[roleId][index];
+        if (value > 0) blockByRole[roleId] = value;
+      });
+      return { start, end, total, byRole: blockByRole };
+    })
+  }));
 };
