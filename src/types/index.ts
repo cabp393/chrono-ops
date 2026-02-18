@@ -88,3 +88,14 @@ export type ScheduleOverride = {
   end: string | null;
   note?: string;
 };
+
+export type ScheduleBlock = {
+  id: string;
+  personId: string;
+  dateISO: string;
+  startISO: string;
+  endISO: string;
+  labelText: string;
+  roleId: string;
+  functionId: string;
+};

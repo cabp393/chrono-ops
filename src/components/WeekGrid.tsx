@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Function, Person, Role, Shift, ShiftDaySegment, ShiftLabelMode, TimeScale } from '../types';
+import type { Role, ScheduleBlock, ShiftDaySegment, ShiftLabelMode, TimeScale } from '../types';
 import { addDays, formatDayHeader, isSameDay } from '../lib/dateUtils';
 import { splitShiftByDay, toDayKey } from '../lib/shiftSegments';
 import { DayColumn } from './DayColumn';
@@ -7,13 +7,10 @@ import { TimeAxis } from './TimeAxis';
 
 type Props = {
   weekStart: Date;
-  shifts: Shift[];
-  people: Person[];
-  functions: Function[];
+  blocks: ScheduleBlock[];
   roles: Role[];
   scale: TimeScale;
   coverageTotals: Record<string, number[]>;
-  onShiftClick: (shift: Shift) => void;
   focusBlock: { dayIndex: number; blockIndex: number } | null;
   shiftLabelMode: ShiftLabelMode;
 };
@@ -22,13 +19,10 @@ const BLOCK_HEIGHT: Record<TimeScale, number> = { 30: 30, 60: 25, 120: 21, 180: 
 
 export const WeekGrid = ({
   weekStart,
-  shifts,
-  people,
-  functions,
+  blocks,
   roles,
   scale,
   coverageTotals,
-  onShiftClick,
   focusBlock,
   shiftLabelMode
 }: Props) => {
@@ -39,17 +33,17 @@ export const WeekGrid = ({
     const keys = Array.from({ length: 7 }, (_, dayIndex) => toDayKey(addDays(weekStart, dayIndex)));
     const byDay = new Map<string, ShiftDaySegment[]>(keys.map((key) => [key, []]));
 
-    shifts.forEach((shift) => {
-      splitShiftByDay(shift).forEach((segment) => {
+    blocks.forEach((block) => {
+      splitShiftByDay(block).forEach((segment) => {
         const slot = byDay.get(segment.dayKey);
         if (slot) slot.push(segment);
       });
     });
 
     return keys.map((key) => byDay.get(key) ?? []);
-  }, [shifts, weekStart]);
+  }, [blocks, weekStart]);
 
-  const shiftsById = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift])), [shifts]);
+  const blocksById = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
 
   useEffect(() => {
     if (!focusBlock || !gridRef.current) return;
@@ -78,16 +72,13 @@ export const WeekGrid = ({
             <DayColumn
               key={dayIdx}
               daySegments={list}
-              shiftsById={shiftsById}
-              people={people}
-              functions={functions}
+              blocksById={blocksById}
               roles={roles}
               scale={scale}
               blockHeight={blockHeight}
               coverage={coverage}
               focusBlockIndex={focusBlock?.dayIndex === dayIdx ? focusBlock.blockIndex : null}
               shiftLabelMode={shiftLabelMode}
-              onShiftClick={onShiftClick}
             />
           );
         })}

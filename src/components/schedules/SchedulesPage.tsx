@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Function, Person, PersonSchedule, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { addDays, startOfWeekMonday } from '../../lib/dateUtils';
-import { loadScheduleData, saveScheduleData } from '../../lib/scheduleStorage';
+import type { ScheduleData } from '../../lib/scheduleStorage';
 import { PeopleList } from './PeopleList';
 import { PersonScheduleEditor } from './PersonScheduleEditor';
 import { TemplateModal } from './TemplateModal';
@@ -11,42 +11,36 @@ const todayWeekStart = startOfWeekMonday(new Date());
 type Props = {
   people: Person[];
   functions: Function[];
+  scheduleData: ScheduleData;
+  onScheduleDataChange: (next: ScheduleData) => void;
 };
 
 const sameAssignments = (a: PersonSchedule[], b: PersonSchedule[]) => JSON.stringify(a) === JSON.stringify(b);
 const sameOverrides = (a: ScheduleOverride[], b: ScheduleOverride[]) => JSON.stringify(a) === JSON.stringify(b);
 
-export const SchedulesPage = ({ people, functions }: Props) => {
+export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataChange }: Props) => {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [search, setSearch] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(people[0]?.id ?? null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
-  const [savedTemplates, setSavedTemplates] = useState<ScheduleTemplate[]>([]);
-  const [savedPersonSchedules, setSavedPersonSchedules] = useState<PersonSchedule[]>([]);
-  const [savedOverrides, setSavedOverrides] = useState<ScheduleOverride[]>([]);
-
-  const [draftPersonSchedules, setDraftPersonSchedules] = useState<PersonSchedule[]>([]);
-  const [draftOverrides, setDraftOverrides] = useState<ScheduleOverride[]>([]);
+  const [draftPersonSchedules, setDraftPersonSchedules] = useState<PersonSchedule[]>(scheduleData.personSchedules);
+  const [draftOverrides, setDraftOverrides] = useState<ScheduleOverride[]>(scheduleData.overrides);
 
   useEffect(() => {
-    const loaded = loadScheduleData(people);
-    setSavedTemplates(loaded.templates);
-    setSavedPersonSchedules(loaded.personSchedules);
-    setSavedOverrides(loaded.overrides);
-    setDraftPersonSchedules(loaded.personSchedules);
-    setDraftOverrides(loaded.overrides);
-  }, [people]);
+    setDraftPersonSchedules(scheduleData.personSchedules);
+    setDraftOverrides(scheduleData.overrides);
+  }, [scheduleData.personSchedules, scheduleData.overrides]);
 
-  const hasUnsavedChanges = !sameAssignments(savedPersonSchedules, draftPersonSchedules)
-    || !sameOverrides(savedOverrides, draftOverrides);
+  const hasUnsavedChanges = !sameAssignments(scheduleData.personSchedules, draftPersonSchedules)
+    || !sameOverrides(scheduleData.overrides, draftOverrides);
 
   const selectedPerson = people.find((item) => item.id === selectedPersonId);
 
   const selectPerson = (personId: string) => {
     if (selectedPersonId !== personId && hasUnsavedChanges) {
-      setDraftPersonSchedules(savedPersonSchedules);
-      setDraftOverrides(savedOverrides);
+      setDraftPersonSchedules(scheduleData.personSchedules);
+      setDraftOverrides(scheduleData.overrides);
     }
     setSelectedPersonId(personId);
   };
@@ -76,15 +70,16 @@ export const SchedulesPage = ({ people, functions }: Props) => {
   };
 
   const resetDraft = () => {
-    setDraftPersonSchedules(savedPersonSchedules);
-    setDraftOverrides(savedOverrides);
+    setDraftPersonSchedules(scheduleData.personSchedules);
+    setDraftOverrides(scheduleData.overrides);
   };
 
   const saveDraft = () => {
-    const next = { templates: savedTemplates, personSchedules: draftPersonSchedules, overrides: draftOverrides };
-    setSavedPersonSchedules(draftPersonSchedules);
-    setSavedOverrides(draftOverrides);
-    saveScheduleData(next);
+    onScheduleDataChange({
+      templates: scheduleData.templates,
+      personSchedules: draftPersonSchedules,
+      overrides: draftOverrides
+    });
   };
 
   return (
@@ -92,7 +87,7 @@ export const SchedulesPage = ({ people, functions }: Props) => {
       <PeopleList
         people={people}
         functions={functions}
-        templates={savedTemplates}
+        templates={scheduleData.templates}
         personSchedules={draftPersonSchedules}
         overrides={draftOverrides}
         weekStart={weekStart}
@@ -105,7 +100,7 @@ export const SchedulesPage = ({ people, functions }: Props) => {
       <PersonScheduleEditor
         person={selectedPerson}
         functions={functions}
-        templates={savedTemplates}
+        templates={scheduleData.templates}
         personSchedules={draftPersonSchedules}
         overrides={draftOverrides}
         weekStart={weekStart}
@@ -124,16 +119,14 @@ export const SchedulesPage = ({ people, functions }: Props) => {
 
       <TemplateModal
         open={templateModalOpen}
-        templates={savedTemplates}
+        templates={scheduleData.templates}
         onClose={() => setTemplateModalOpen(false)}
         onSave={(templates) => {
           const sanitize = (rows: PersonSchedule[]) => rows.map((item) => templates.some((tpl) => tpl.id === item.templateId) ? item : { ...item, templateId: null });
-          const nextSavedSchedules = sanitize(savedPersonSchedules);
+          const nextSavedSchedules = sanitize(scheduleData.personSchedules);
           const nextDraftSchedules = sanitize(draftPersonSchedules);
-          setSavedTemplates(templates);
-          setSavedPersonSchedules(nextSavedSchedules);
           setDraftPersonSchedules(nextDraftSchedules);
-          saveScheduleData({ templates, personSchedules: nextSavedSchedules, overrides: savedOverrides });
+          onScheduleDataChange({ templates, personSchedules: nextSavedSchedules, overrides: scheduleData.overrides });
         }}
       />
     </main>

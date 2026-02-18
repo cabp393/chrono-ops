@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDayHeader, formatHour } from '../lib/dateUtils';
-import type { Function, Person, Role, Shift, TimeScale } from '../types';
+import type { Function, Role, ScheduleBlock, TimeScale } from '../types';
 
 type WeekBlock = {
   start: Date;
@@ -31,8 +31,7 @@ type HeatbarRowProps = {
 type Props = {
   roles: Role[];
   functions: Function[];
-  people: Person[];
-  shifts: Shift[];
+  scheduleBlocks: ScheduleBlock[];
   weekStart: Date;
   scale: TimeScale;
   activePeople: number;
@@ -116,12 +115,11 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelect }: Heatb
   );
 };
 
-export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scale, activePeople, onFocusBlock }: Props) => {
+export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scale, activePeople, onFocusBlock }: Props) => {
   const [view, setView] = useState<'role' | 'function'>('role');
   const [popover, setPopover] = useState<{ title: string; details: string } | null>(null);
 
   const functionById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
-  const personById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
 
   const weekBlocks = useMemo(() => {
     const totalBlocks = (24 * 60) / scale;
@@ -143,14 +141,10 @@ export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scal
       }));
     });
 
-    shifts.forEach((shift) => {
-      const shiftStart = new Date(shift.startISO).getTime();
-      const shiftEnd = new Date(shift.endISO).getTime();
+    scheduleBlocks.forEach((scheduleBlock) => {
+      const shiftStart = new Date(scheduleBlock.startISO).getTime();
+      const shiftEnd = new Date(scheduleBlock.endISO).getTime();
       if (shiftEnd <= shiftStart) return;
-      const person = personById.get(shift.personId);
-      if (!person) return;
-      const fn = functionById.get(person.functionId);
-      if (!fn) return;
 
       for (let dayIndex = 0; dayIndex < matrix.length; dayIndex += 1) {
         const dayStart = matrix[dayIndex][0].dayDate.getTime();
@@ -163,12 +157,12 @@ export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scal
         const endIdx = Math.ceil((overlapEnd - dayStart) / blockMs) - 1;
 
         for (let i = Math.max(0, startIdx); i <= Math.min(totalBlocks - 1, endIdx); i += 1) {
-          const block = matrix[dayIndex][i];
-          block.totalSet.add(shift.personId);
-          block.byRoleSet[fn.roleId] = block.byRoleSet[fn.roleId] || new Set<string>();
-          block.byFunctionSet[fn.id] = block.byFunctionSet[fn.id] || new Set<string>();
-          block.byRoleSet[fn.roleId].add(shift.personId);
-          block.byFunctionSet[fn.id].add(shift.personId);
+          const matrixBlock = matrix[dayIndex][i];
+          matrixBlock.totalSet.add(scheduleBlock.personId);
+          matrixBlock.byRoleSet[scheduleBlock.roleId] = matrixBlock.byRoleSet[scheduleBlock.roleId] || new Set<string>();
+          matrixBlock.byFunctionSet[scheduleBlock.functionId] = matrixBlock.byFunctionSet[scheduleBlock.functionId] || new Set<string>();
+          matrixBlock.byRoleSet[scheduleBlock.roleId].add(scheduleBlock.personId);
+          matrixBlock.byFunctionSet[scheduleBlock.functionId].add(scheduleBlock.personId);
         }
       }
     });
@@ -183,34 +177,29 @@ export const CoverageCard = ({ roles, functions, people, shifts, weekStart, scal
       byRole: Object.fromEntries(Object.entries(block.byRoleSet).map(([id, set]) => [id, set.size])),
       byFunction: Object.fromEntries(Object.entries(block.byFunctionSet).map(([id, set]) => [id, set.size]))
     }));
-  }, [shifts, weekStart, scale, personById, functionById]);
+  }, [scheduleBlocks, weekStart, scale]);
 
   const roleTotals = useMemo(() => {
     const counts: Record<string, number> = {};
     const seen = new Set<string>();
-    shifts.forEach((shift) => {
-      if (seen.has(shift.personId)) return;
-      const person = personById.get(shift.personId);
-      const fn = person ? functionById.get(person.functionId) : undefined;
-      if (!fn) return;
-      seen.add(shift.personId);
-      counts[fn.roleId] = (counts[fn.roleId] || 0) + 1;
+    scheduleBlocks.forEach((block) => {
+      if (seen.has(block.personId)) return;
+      seen.add(block.personId);
+      counts[block.roleId] = (counts[block.roleId] || 0) + 1;
     });
     return counts;
-  }, [shifts, personById, functionById]);
+  }, [scheduleBlocks]);
 
   const functionTotals = useMemo(() => {
     const counts: Record<string, number> = {};
     const seen = new Set<string>();
-    shifts.forEach((shift) => {
-      if (seen.has(shift.personId)) return;
-      const person = personById.get(shift.personId);
-      if (!person) return;
-      seen.add(shift.personId);
-      counts[person.functionId] = (counts[person.functionId] || 0) + 1;
+    scheduleBlocks.forEach((block) => {
+      if (seen.has(block.personId)) return;
+      seen.add(block.personId);
+      counts[block.functionId] = (counts[block.functionId] || 0) + 1;
     });
     return counts;
-  }, [shifts, personById]);
+  }, [scheduleBlocks]);
 
   const groupedFunctions = useMemo(() => {
     const byRole: Record<string, Function[]> = {};

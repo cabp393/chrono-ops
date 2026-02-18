@@ -1,4 +1,4 @@
-import type { Shift, ShiftDaySegment } from '../types';
+import type { ShiftDaySegment } from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -14,7 +14,14 @@ const startOfDay = (date: Date) => {
   return out;
 };
 
-export const splitShiftByDay = (shift: Shift): ShiftDaySegment[] => {
+type TimeBlock = {
+  id: string;
+  personId: string;
+  startISO: string;
+  endISO: string;
+};
+
+export const splitShiftByDay = (shift: TimeBlock): ShiftDaySegment[] => {
   const startMs = new Date(shift.startISO).getTime();
   const endMs = new Date(shift.endISO).getTime();
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return [];

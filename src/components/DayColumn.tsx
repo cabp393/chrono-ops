@@ -1,37 +1,28 @@
 import { useMemo } from 'react';
-import type { Function, Person, Role, Shift, ShiftDaySegment, ShiftLabelMode, TimeScale } from '../types';
+import type { Role, ScheduleBlock, ShiftDaySegment, ShiftLabelMode, TimeScale } from '../types';
 import { ShiftItem } from './ShiftItem';
 
 type Props = {
   daySegments: ShiftDaySegment[];
-  shiftsById: Map<string, Shift>;
-  people: Person[];
-  functions: Function[];
+  blocksById: Map<string, ScheduleBlock>;
   roles: Role[];
   scale: TimeScale;
   blockHeight: number;
   coverage: number[];
   focusBlockIndex: number | null;
   shiftLabelMode: ShiftLabelMode;
-  onShiftClick: (shift: Shift) => void;
 };
 
 export const DayColumn = ({
   daySegments,
-  shiftsById,
-  people,
-  functions,
+  blocksById,
   roles,
   scale,
   blockHeight,
   coverage,
-  focusBlockIndex,
-  shiftLabelMode,
-  onShiftClick
+  focusBlockIndex
 }: Props) => {
   const dayHeight = ((24 * 60) / scale) * blockHeight;
-  const peopleById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
-  const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
   const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
 
   const withLayout = useMemo(() => {
@@ -60,8 +51,8 @@ export const DayColumn = ({
       ))}
 
       {withLayout.map(({ segment, lane, overlap }) => {
-        const shift = shiftsById.get(segment.shiftId);
-        if (!shift) return null;
+        const block = blocksById.get(segment.shiftId);
+        if (!block) return null;
 
         const start = new Date(segment.segStartISO);
         const end = new Date(segment.segEndISO);
@@ -69,20 +60,14 @@ export const DayColumn = ({
         const height = Math.max((((end.getTime() - start.getTime()) / 60000) / scale) * blockHeight, blockHeight * 0.75);
         const width = `${100 / Math.max(overlap, 1)}%`;
         const left = `${(100 / Math.max(overlap, 1)) * lane}%`;
-        const person = peopleById.get(shift.personId);
-        const functionInfo = person ? functionsById.get(person.functionId) : undefined;
-        const role = functionInfo ? rolesById.get(functionInfo.roleId) : undefined;
+        const role = rolesById.get(block.roleId);
 
         return (
           <ShiftItem
             key={`${segment.shiftId}-${segment.segStartISO}`}
-            shift={shift}
-            person={person}
-            functionInfo={functionInfo}
+            block={block}
             role={role}
             compact={height < 48}
-            onClick={onShiftClick}
-            shiftLabelMode={shiftLabelMode}
             style={{ top, height, width, left }}
           />
         );
