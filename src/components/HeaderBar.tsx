@@ -1,16 +1,10 @@
-import { ChevronLeft, ChevronRight, Plus, ZoomIn, ZoomOut } from '../lib/icons';
-import { TIME_SCALE_OPTIONS, scaleLabel } from '../lib/timeScale';
-import type { TimeScale } from '../types';
+import { ChevronLeft, ChevronRight, Plus, Target } from '../lib/icons';
 
 type Props = {
   weekLabel: string;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onCurrentWeek: () => void;
-  scale: TimeScale;
-  onScaleDown: () => void;
-  onScaleUp: () => void;
-  onScaleChange: (scale: TimeScale) => void;
   onAddShift: () => void;
   onOpenFilters: () => void;
 };
@@ -20,31 +14,26 @@ export const HeaderBar = ({
   onPrevWeek,
   onNextWeek,
   onCurrentWeek,
-  scale,
-  onScaleDown,
-  onScaleUp,
-  onScaleChange,
   onAddShift,
   onOpenFilters
 }: Props) => (
   <header className="header-bar">
-    <div className="brand">ShiftBoard</div>
-    <div className="week-controls">
-      <button onClick={onPrevWeek}><ChevronLeft size={14} />Anterior</button>
-      <button onClick={onCurrentWeek}>Semana actual</button>
-      <button onClick={onNextWeek}>Siguiente<ChevronRight size={14} /></button>
-      <span className="week-label">{weekLabel}</span>
-    </div>
-    <div className="header-actions">
-      <div className="zoom-control">
-        <button onClick={onScaleDown} aria-label="Alejar"><ZoomOut size={14} /></button>
-        <select value={scale} onChange={(e) => onScaleChange(Number(e.target.value) as TimeScale)}>
-          {TIME_SCALE_OPTIONS.map((option) => <option key={option} value={option}>{scaleLabel(option)}</option>)}
-        </select>
-        <button onClick={onScaleUp} aria-label="Acercar"><ZoomIn size={14} /></button>
+    <div className="header-top-row">
+      <div className="brand">ShiftBoard</div>
+      <div className="header-actions">
+        <button className="ghost" onClick={onOpenFilters}>Filtros</button>
+        <button className="primary add-shift-btn" onClick={onAddShift} title="Agregar turno" aria-label="Agregar turno">
+          <Plus size={14} />
+          <span>Agregar turno</span>
+        </button>
       </div>
-      <button className="ghost mobile-only" onClick={onOpenFilters}>Filtros</button>
-      <button className="primary" onClick={onAddShift}><Plus size={14} />Agregar turno</button>
+    </div>
+
+    <div className="week-controls">
+      <button className="icon-btn" onClick={onPrevWeek} aria-label="Semana anterior"><ChevronLeft size={16} /></button>
+      <span className="week-label">{weekLabel}</span>
+      <button className="icon-btn" onClick={onNextWeek} aria-label="Semana siguiente"><ChevronRight size={16} /></button>
+      <button className="ghost current-week-btn" onClick={onCurrentWeek}><Target size={14} />Semana actual</button>
     </div>
   </header>
 );
