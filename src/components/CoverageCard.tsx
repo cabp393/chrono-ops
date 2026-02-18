@@ -179,14 +179,19 @@ export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, active
       )}
 
       {view === 'total' ? (
-        <div className="heatbar">
-          <HeatbarRow
-            blocks={weekBlocks}
-            color="#2563eb"
-            maxValue={maxTotal}
-            valueFromBlock={(block) => block.total}
-            onSelect={(bar) => showPopover(bar)}
-          />
+        <div className="role-rows total-row-wrap">
+          <div className="role-row total-row">
+            <span className="chip role-chip total-row-label" aria-hidden="true">Total</span>
+            <div className="role-row-bars">
+              <HeatbarRow
+                blocks={weekBlocks}
+                color="#2563eb"
+                maxValue={maxTotal}
+                valueFromBlock={(block) => block.total}
+                onSelect={(bar) => showPopover(bar)}
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <div className="role-rows">

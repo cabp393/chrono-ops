@@ -72,6 +72,12 @@ select, input { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; padd
 .role-chip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; font-size: 11px; padding: 3px 8px; }
 .role-row-bars { min-width: 0; }
 .role-row-bars .heatbar-segment { height: 8px; }
+
+.total-row-wrap { margin-top: 10px; }
+.total-row-label {
+  visibility: hidden;
+  pointer-events: none;
+}
 .coverage-popover {
   position: absolute;
   left: 50%;
