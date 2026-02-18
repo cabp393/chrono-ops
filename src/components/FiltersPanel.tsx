@@ -124,7 +124,7 @@ export const FiltersPanel = ({
           <h4>Rol</h4>
           <div className="role-list compact">
             {roles.map((role) => (
-              <label key={role.id}>
+              <label key={role.id} className="filter-row">
                 <span><i style={{ backgroundColor: role.color }} />{role.nombre} ({roleCounts[role.id] || 0})</span>
                 <input type="checkbox" checked={draft.roleIds.includes(role.id)} onChange={() => toggleRole(role.id)} />
               </label>
@@ -142,7 +142,7 @@ export const FiltersPanel = ({
               <div key={roleId} className="function-group">
                 <p>{role?.nombre ?? roleId}</p>
                 {items.map((fn) => (
-                  <label key={fn.id} className="function-item">
+                  <label key={fn.id} className="function-item filter-row">
                     <span>{fn.nombre} ({functionCounts[fn.id] || 0})</span>
                     <input type="checkbox" checked={draft.functionIds.includes(fn.id)} onChange={() => toggleFunction(fn.id)} />
                   </label>
@@ -158,7 +158,7 @@ export const FiltersPanel = ({
                 const fn = functionsById.get(functionId);
                 if (!fn) return null;
                 return (
-                  <label key={functionId} className="function-item disabled">
+                  <label key={functionId} className="function-item filter-row disabled">
                     <span>{fn.nombre}</span>
                     <input type="checkbox" checked onChange={() => toggleFunction(functionId)} />
                   </label>
