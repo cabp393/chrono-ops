@@ -52,6 +52,10 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
       setError('La hora de fin debe ser mayor al inicio.');
       return;
     }
+    if (!personId || !rolId) {
+      setError('Debes seleccionar persona y rol.');
+      return;
+    }
     onSave({ id: editing?.id ?? crypto.randomUUID(), personId, rolId, startISO: start.toISOString(), endISO: end.toISOString() });
     onClose();
   };
@@ -62,17 +66,17 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
         <h3>{editing ? 'Editar turno' : 'Agregar turno'}</h3>
         {error && <p className="error">{error}</p>}
         <label>Persona
-          <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
+          <select value={personId} onChange={(e) => { setPersonId(e.target.value); setError(''); }}>
             {people.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
         </label>
         <label>Rol
-          <select value={rolId} onChange={(e) => setRolId(e.target.value)}>
+          <select value={rolId} onChange={(e) => { setRolId(e.target.value); setError(''); }}>
             {roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </label>
-        <label>Inicio<input type="datetime-local" value={startISO} onChange={(e) => setStartISO(e.target.value)} /></label>
-        <label>Fin<input type="datetime-local" value={endISO} onChange={(e) => setEndISO(e.target.value)} /></label>
+        <label>Inicio<input type="datetime-local" value={startISO} onChange={(e) => { setStartISO(e.target.value); setError(''); }} /></label>
+        <label>Fin<input type="datetime-local" value={endISO} onChange={(e) => { setEndISO(e.target.value); setError(''); }} /></label>
         <div className="modal-actions">
           {editing && onDuplicate && <button onClick={() => onDuplicate({ id: editing.id, personId, rolId, startISO: new Date(startISO).toISOString(), endISO: new Date(endISO).toISOString() }, 1)}>Duplicar +1 día</button>}
           <button onClick={onClose}>Cancelar</button>
