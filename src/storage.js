@@ -15,36 +15,58 @@ function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function hasStorage() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function safeGetItem(key) {
+  if (!hasStorage()) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key, value) {
+  if (!hasStorage()) return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignora errores de quota o restricciones del navegador.
+  }
+}
+
 export class LocalStorageAdapter {
   getScenario() {
-    const raw = localStorage.getItem(SCENARIO_KEY);
+    const raw = safeGetItem(SCENARIO_KEY);
     const value = safeParseJSON(raw, null);
     return isObject(value) ? value : null;
   }
 
   setScenario(scenario) {
-    localStorage.setItem(SCENARIO_KEY, JSON.stringify(scenario));
+    safeSetItem(SCENARIO_KEY, JSON.stringify(scenario));
   }
 
   getSchedule() {
-    const raw = localStorage.getItem(SCHEDULE_KEY);
+    const raw = safeGetItem(SCHEDULE_KEY);
     const value = safeParseJSON(raw, null);
     if (!isObject(value)) return null;
     return Array.isArray(value.assignments) ? value : null;
   }
 
   setSchedule(schedule) {
-    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule));
+    safeSetItem(SCHEDULE_KEY, JSON.stringify(schedule));
   }
 
   getSnapshots() {
-    const raw = localStorage.getItem(SNAPSHOTS_KEY);
+    const raw = safeGetItem(SNAPSHOTS_KEY);
     const value = safeParseJSON(raw, []);
     return Array.isArray(value) ? value : [];
   }
 
   setSnapshots(snapshots) {
-    localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
+    safeSetItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
   }
 
   exportAll() {

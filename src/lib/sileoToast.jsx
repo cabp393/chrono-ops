@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 const SileoToastContext = createContext({
   info: () => {},
@@ -6,9 +6,14 @@ const SileoToastContext = createContext({
   error: () => {}
 });
 
+function createToastId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `toast-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function buildToast(type, message) {
   return {
-    id: crypto.randomUUID(),
+    id: createToastId(),
     type,
     message,
     createdAt: Date.now()
@@ -17,13 +22,18 @@ function buildToast(type, message) {
 
 export function SileoToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const timersRef = useRef(new Set());
 
   const push = useCallback((type, message) => {
     const next = buildToast(type, message);
     setToasts((prev) => [...prev, next].slice(-5));
-    window.setTimeout(() => {
+
+    if (typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== next.id));
+      timersRef.current.delete(timer);
     }, 3500);
+    timersRef.current.add(timer);
   }, []);
 
   const api = useMemo(
