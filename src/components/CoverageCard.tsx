@@ -13,10 +13,11 @@ type Props = {
   coverage: DayCoverage[];
   activePeople: number;
   roleTotals: Record<string, number>;
+  activeRoleIds: Set<string>;
   onFocusBlock: (dayIndex: number, blockIndex: number) => void;
 };
 
-export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, onFocusBlock }: Props) => {
+export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, activeRoleIds, onFocusBlock }: Props) => {
   const [view, setView] = useState<'total' | 'role'>('total');
   const weekBlocks = useMemo(
     () => coverage.flatMap((day, dayIndex) => day.blocks.map((block, blockIndex) => ({ ...block, dayIndex, blockIndex, dayDate: day.dayDate }))),
@@ -38,11 +39,14 @@ export const CoverageCard = ({ roles, coverage, activePeople, roleTotals, onFocu
       </div>
 
       <div className="chip-row">
-        {roles.map((role) => (
-          <span key={role.id} className="chip" style={{ borderColor: role.color, color: role.color }}>
-            {role.nombre}: {roleTotals[role.id] || 0}
-          </span>
-        ))}
+        {roles.map((role) => {
+          const active = activeRoleIds.size === 0 || activeRoleIds.has(role.id);
+          return (
+            <span key={role.id} className={`chip ${active ? 'active' : 'muted'}`} style={{ borderColor: role.color, color: role.color }}>
+              {role.nombre}: {roleTotals[role.id] || 0}
+            </span>
+          );
+        })}
       </div>
 
       {view === 'total' ? (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Person, Role, Shift, TimeScale } from '../types';
+import type { Function, Person, Role, Shift, TimeScale } from '../types';
 import { addDays, formatDayHeader, isSameDay } from '../lib/dateUtils';
 import { DayColumn } from './DayColumn';
 import { TimeAxis } from './TimeAxis';
@@ -8,6 +8,7 @@ type Props = {
   weekStart: Date;
   shifts: Shift[];
   people: Person[];
+  functions: Function[];
   roles: Role[];
   scale: TimeScale;
   coverageTotals: Record<string, number[]>;
@@ -24,6 +25,7 @@ export const WeekGrid = ({
   weekStart,
   shifts,
   people,
+  functions,
   roles,
   scale,
   coverageTotals,
@@ -73,6 +75,7 @@ export const WeekGrid = ({
               dayShifts={list}
               dayDate={dayDate}
               people={people}
+              functions={functions}
               roles={roles}
               scale={scale}
               blockHeight={blockHeight}

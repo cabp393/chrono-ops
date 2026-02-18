@@ -35,7 +35,7 @@ export const Filters = ({ roles, people, selectedRoles, personQuery, onlyGaps, o
     </label>
     <div className="mini-stats">
       {roles.map((r) => (
-        <span key={r.id} className="badge" style={{ borderColor: r.color }}>{r.nombre}: {people.filter((p) => p.rolId === r.id).length}</span>
+        <span key={r.id} className="badge" style={{ borderColor: r.color }}>{r.nombre}: {people.length}</span>
       ))}
     </div>
   </aside>

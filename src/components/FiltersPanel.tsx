@@ -1,95 +1,192 @@
-import type { Person, Role } from '../types';
-
-type Metric = {
-  label: string;
-  value: string;
-};
+import { useEffect, useMemo, useState } from 'react';
+import type { AppliedFilters, Function, Person, Role } from '../types';
 
 type Props = {
   roles: Role[];
+  functions: Function[];
   people: Person[];
-  selectedRoles: string[];
-  personQuery: string;
-  onlyGaps: boolean;
+  appliedFilters: AppliedFilters;
   showLabels: boolean;
-  metrics: Metric[];
+  onlyGaps: boolean;
   open: boolean;
   onClose: () => void;
-  onToggleRole: (id: string) => void;
-  onPersonQuery: (q: string) => void;
-  onToggleGaps: (value: boolean) => void;
+  onApplyFilters: (filters: AppliedFilters) => void;
+  onResetFilters: () => void;
   onToggleLabels: (value: boolean) => void;
+  onToggleGaps: (value: boolean) => void;
 };
+
+const norm = (value: string) => value.trim().toLowerCase();
 
 export const FiltersPanel = ({
   roles,
+  functions,
   people,
-  selectedRoles,
-  personQuery,
-  onlyGaps,
+  appliedFilters,
   showLabels,
-  metrics,
+  onlyGaps,
   open,
   onClose,
-  onToggleRole,
-  onPersonQuery,
-  onToggleGaps,
-  onToggleLabels
-}: Props) => (
-  <aside className={`filters-panel ${open ? 'open' : ''}`}>
-    <div className="filters-head">
-      <h3>Filtros</h3>
-      <button className="ghost mobile-only" onClick={onClose}>Cerrar</button>
-    </div>
+  onApplyFilters,
+  onResetFilters,
+  onToggleLabels,
+  onToggleGaps
+}: Props) => {
+  const [draft, setDraft] = useState<AppliedFilters>(appliedFilters);
 
-    <label>
-      Buscar persona
-      <input value={personQuery} onChange={(e) => onPersonQuery(e.target.value)} placeholder="Nombre..." />
-    </label>
+  useEffect(() => {
+    setDraft(appliedFilters);
+  }, [appliedFilters]);
 
-    <div>
-      <p>Roles</p>
-      <div className="role-list">
-        {roles.map((role) => {
-          const total = people.filter((person) => person.rolId === role.id).length;
-          return (
-            <label key={role.id}>
-              <span><i style={{ backgroundColor: role.color }} />{role.nombre} ({total})</span>
-              <input type="checkbox" checked={selectedRoles.includes(role.id)} onChange={() => onToggleRole(role.id)} />
-            </label>
-          );
-        })}
+  const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
+
+  const draftSearch = norm(draft.searchText);
+  const roleScope = draft.roleIds.length > 0 ? new Set(draft.roleIds) : null;
+
+  const peopleMatchingSearch = useMemo(() => {
+    if (!draftSearch) return people;
+    return people.filter((person) => {
+      const fnName = functionsById.get(person.functionId)?.nombre ?? '';
+      return person.nombre.toLowerCase().includes(draftSearch) || fnName.toLowerCase().includes(draftSearch);
+    });
+  }, [draftSearch, people, functionsById]);
+
+  const roleCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    peopleMatchingSearch.forEach((person) => {
+      const fn = functionsById.get(person.functionId);
+      if (!fn) return;
+      counts[fn.roleId] = (counts[fn.roleId] || 0) + 1;
+    });
+    return counts;
+  }, [peopleMatchingSearch, functionsById]);
+
+  const functionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    peopleMatchingSearch.forEach((person) => {
+      counts[person.functionId] = (counts[person.functionId] || 0) + 1;
+    });
+    return counts;
+  }, [peopleMatchingSearch]);
+
+  const groupedFunctions = useMemo(() => {
+    const byRole: Record<string, Function[]> = {};
+    functions.forEach((fn) => {
+      byRole[fn.roleId] = byRole[fn.roleId] || [];
+      byRole[fn.roleId].push(fn);
+    });
+    return byRole;
+  }, [functions]);
+
+  const visibleRoleIds = roleScope ? Array.from(roleScope) : roles.map((role) => role.id);
+  const outOfRoleSelections = draft.functionIds.filter((functionId) => {
+    const fn = functionsById.get(functionId);
+    return !!(fn && roleScope && !roleScope.has(fn.roleId));
+  });
+
+  const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(appliedFilters);
+
+  const toggleRole = (id: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      roleIds: prev.roleIds.includes(id) ? prev.roleIds.filter((item) => item !== id) : [...prev.roleIds, id]
+    }));
+  };
+
+  const toggleFunction = (id: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      functionIds: prev.functionIds.includes(id) ? prev.functionIds.filter((item) => item !== id) : [...prev.functionIds, id]
+    }));
+  };
+
+  return (
+    <aside className={`filters-panel ${open ? 'open' : ''}`}>
+      <div className="filters-head compact">
+        <h3>Filtros</h3>
+        <div className="filters-head-actions">
+          {hasUnsavedChanges && <span className="pending-badge">Cambios sin aplicar</span>}
+          <button className="ghost mobile-only" onClick={onClose}>Cerrar</button>
+        </div>
       </div>
-    </div>
 
-    <label className="switch-row">
-      Mostrar solo vacíos
-      <input type="checkbox" checked={onlyGaps} onChange={(e) => onToggleGaps(e.target.checked)} />
-    </label>
-    <label className="switch-row">
-      Mostrar etiquetas
-      <input type="checkbox" checked={showLabels} onChange={(e) => onToggleLabels(e.target.checked)} />
-    </label>
+      <div className="filters-scroll">
+        <section className="filters-section">
+          <input
+            value={draft.searchText}
+            onChange={(e) => setDraft((prev) => ({ ...prev, searchText: e.target.value }))}
+            placeholder="Buscar por nombre o función…"
+          />
+          {draft.searchText && <button className="clear-search" onClick={() => setDraft((prev) => ({ ...prev, searchText: '' }))}>×</button>}
+        </section>
 
-    <div>
-      <p>Leyenda</p>
-      <div className="chip-row">
-        {roles.map((role) => (
-          <span key={role.id} className="chip" style={{ borderColor: role.color, color: role.color }}>{role.nombre}</span>
-        ))}
-      </div>
-    </div>
-
-    <div>
-      <p>Métricas rápidas</p>
-      <div className="metrics-list">
-        {metrics.map((metric) => (
-          <div key={metric.label}>
-            <small>{metric.label}</small>
-            <strong>{metric.value}</strong>
+        <section className="filters-section">
+          <h4>Rol</h4>
+          <div className="role-list compact">
+            {roles.map((role) => (
+              <label key={role.id} className="filter-row">
+                <span><i style={{ backgroundColor: role.color }} />{role.nombre} ({roleCounts[role.id] || 0})</span>
+                <input type="checkbox" checked={draft.roleIds.includes(role.id)} onChange={() => toggleRole(role.id)} />
+              </label>
+            ))}
           </div>
-        ))}
+        </section>
+
+        <section className="filters-section">
+          <h4>Función</h4>
+          {visibleRoleIds.map((roleId) => {
+            const role = roles.find((item) => item.id === roleId);
+            const items = groupedFunctions[roleId] || [];
+            if (items.length === 0) return null;
+            return (
+              <div key={roleId} className="function-group">
+                <p>{role?.nombre ?? roleId}</p>
+                {items.map((fn) => (
+                  <label key={fn.id} className="function-item filter-row">
+                    <span>{fn.nombre} ({functionCounts[fn.id] || 0})</span>
+                    <input type="checkbox" checked={draft.functionIds.includes(fn.id)} onChange={() => toggleFunction(fn.id)} />
+                  </label>
+                ))}
+              </div>
+            );
+          })}
+
+          {outOfRoleSelections.length > 0 && (
+            <div className="function-group outside-filter">
+              <p>Fuera de filtro</p>
+              {outOfRoleSelections.map((functionId) => {
+                const fn = functionsById.get(functionId);
+                if (!fn) return null;
+                return (
+                  <label key={functionId} className="function-item filter-row disabled">
+                    <span>{fn.nombre}</span>
+                    <input type="checkbox" checked onChange={() => toggleFunction(functionId)} />
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="filters-section tight">
+          <label className="switch-row">
+            Mostrar solo vacíos
+            <input type="checkbox" checked={onlyGaps} onChange={(e) => onToggleGaps(e.target.checked)} />
+          </label>
+        </section>
+
+        <section className="filters-section tight">
+          <label className="switch-row">
+            Mostrar etiquetas
+            <input type="checkbox" checked={showLabels} onChange={(e) => onToggleLabels(e.target.checked)} />
+          </label>
+        </section>
       </div>
-    </div>
-  </aside>
-);
+
+      <div className="filters-footer">
+        <button className="primary" onClick={() => onApplyFilters(draft)}>Aplicar</button>
+        <button onClick={() => { setDraft({ searchText: '', roleIds: [], functionIds: [] }); onResetFilters(); }}>Reiniciar</button>
+      </div>
+    </aside>
+  );
+};

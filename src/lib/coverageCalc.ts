@@ -13,7 +13,8 @@ export const calculateCoverage = (
   weekStart: Date,
   shifts: Shift[],
   roles: Role[],
-  scale: TimeScale
+  scale: TimeScale,
+  getRoleId: (shift: Shift) => string | undefined
 ): DayCoverage[] => {
   const blockMs = scale * 60 * 1000;
   const totalBlocks = (24 * 60) / scale;
@@ -31,6 +32,7 @@ export const calculateCoverage = (
     const shiftStart = new Date(shift.startISO).getTime();
     const shiftEnd = new Date(shift.endISO).getTime();
     if (shiftEnd <= shiftStart) return;
+    const roleId = getRoleId(shift);
 
     for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
       const dayStart = days[dayIndex].dayDate.getTime();
@@ -44,7 +46,7 @@ export const calculateCoverage = (
 
       for (let i = Math.max(0, startIdx); i <= Math.min(totalBlocks - 1, endIdx); i += 1) {
         days[dayIndex].totals[i] += 1;
-        if (days[dayIndex].byRole[shift.rolId]) days[dayIndex].byRole[shift.rolId][i] += 1;
+        if (roleId && days[dayIndex].byRole[roleId]) days[dayIndex].byRole[roleId][i] += 1;
       }
     }
   });
