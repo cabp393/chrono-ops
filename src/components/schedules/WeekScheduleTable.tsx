@@ -1,6 +1,6 @@
 import { DAY_LABELS, createEmptyDaySlot, formatDateCompact, formatSlot, getDayKey, resolveSchedule, toISODate, weekDates } from '../../lib/scheduleUtils';
 import type { ScheduleOverride, ScheduleTemplate } from '../../types';
-import { TimeSelect } from './TimeSelect';
+import { TimeInput24 } from '../TimeInput24';
 
 type Props = {
   personId: string;
@@ -33,23 +33,23 @@ export const WeekScheduleTable = ({ personId, weekStart, template, overrides, we
               </div>
 
               <div className="day-controls">
-                <TimeSelect
+                <TimeInput24
                   disabled={!weekAssigned}
                   value={override?.start ?? resolved.slot.start ?? ''}
                   onChange={(value) => {
                     const nextStart = value || null;
                     onUpsertOverride(dateISO, nextStart, override?.end ?? resolved.slot.end ?? null);
                   }}
-                  stepMinutes={60}
+                  step={60}
                 />
-                <TimeSelect
+                <TimeInput24
                   disabled={!weekAssigned}
                   value={override?.end ?? resolved.slot.end ?? ''}
                   onChange={(value) => {
                     const nextEnd = value || null;
                     onUpsertOverride(dateISO, override?.start ?? resolved.slot.start ?? null, nextEnd);
                   }}
-                  stepMinutes={60}
+                  step={60}
                 />
                 <button className="ghost" disabled={!weekAssigned} onClick={() => onUpsertOverride(dateISO, null, null)}>Libre</button>
                 {override ? <button onClick={() => onRevertOverride(dateISO)}>Revertir</button> : null}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fromLocalDateAndTime, toLocalDateInput, toLocalTimeInput } from '../lib/dateUtils';
-import { buildTimeOptions } from '../lib/timeOptions';
 import type { Function, Person, Role, Shift } from '../types';
+import { TimeInput24 } from './TimeInput24';
 
 type Props = {
   open: boolean;
@@ -23,7 +23,6 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
   const [error, setError] = useState('');
-  const timeOptions = useMemo(() => buildTimeOptions(60), []);
 
   useEffect(() => {
     if (!open) return;
@@ -101,17 +100,9 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
         </div>
 
         <label>Fecha inicio<input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setError(''); }} /></label>
-        <label>Hora inicio
-          <select value={startTime} onChange={(e) => { setStartTime(e.target.value); setError(''); }}>
-            {timeOptions.map((time) => <option key={time} value={time}>{time}</option>)}
-          </select>
-        </label>
+        <label>Hora inicio<TimeInput24 value={startTime} onChange={(value) => { setStartTime(value); setError(''); }} step={60} /></label>
         <label>Fecha fin<input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setError(''); }} /></label>
-        <label>Hora fin
-          <select value={endTime} onChange={(e) => { setEndTime(e.target.value); setError(''); }}>
-            {timeOptions.map((time) => <option key={time} value={time}>{time}</option>)}
-          </select>
-        </label>
+        <label>Hora fin<TimeInput24 value={endTime} onChange={(value) => { setEndTime(value); setError(''); }} step={60} /></label>
         <div className="modal-actions">
           {editing && onDuplicate && <button onClick={() => onDuplicate({ id: editing.id, personId, startISO: new Date(fromLocalDateAndTime(startDate, startTime)).toISOString(), endISO: new Date(fromLocalDateAndTime(endDate, endTime)).toISOString() }, 1)}>Duplicar +1 día</button>}
           <button onClick={onClose}>Cancelar</button>
