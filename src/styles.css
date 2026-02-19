@@ -421,6 +421,20 @@ body.drawer-open { overflow: hidden; }
   border-color: #fca5a5;
 }
 .schedule-footer { margin-top: 2px; }
+.schedule-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.schedule-action-btn {
+  width: 34px;
+  height: 34px;
+}
+.schedule-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 
 .templates-modal { width: min(920px, 96vw); max-height: 88vh; overflow: auto; }
 .templates-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

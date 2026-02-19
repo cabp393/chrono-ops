@@ -20,7 +20,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 export const SchedulesPage = ({ people, functions, templates, personWeekPlans, personFunctionWeeks, overrides, weekStart, onChange }: Props) => {
   const [search, setSearch] = useState('');
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(people[0]?.id ?? null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   const [draftWeekPlans, setDraftWeekPlans] = useState<PersonWeekPlan[]>(personWeekPlans);
@@ -91,6 +91,11 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
     setDraftOverrides(overrides);
   };
 
+  const cancelEditing = () => {
+    resetDraft();
+    setSelectedPersonId(null);
+  };
+
   return (
     <main className="dashboard-layout schedules-layout">
       <PeopleList
@@ -102,6 +107,7 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
         overrides={draftOverrides}
         weekStart={weekStart}
         selectedPersonId={selectedPersonId}
+        collapsedToSelected={!!selectedPersonId}
         search={search}
         onSearch={setSearch}
         onSelect={selectPerson}
@@ -121,7 +127,7 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
         onOpenTemplateModal={() => setTemplateModalOpen(true)}
         onUpsertOverride={upsertOverride}
-        onReset={resetDraft}
+        onReset={cancelEditing}
         onSave={() => !hasInvalidSlots && onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides })}
       />
 

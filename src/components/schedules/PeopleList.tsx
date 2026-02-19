@@ -10,6 +10,7 @@ type Props = {
   overrides: ScheduleOverride[];
   weekStart: Date;
   selectedPersonId: string | null;
+  collapsedToSelected: boolean;
   search: string;
   onSearch: (value: string) => void;
   onSelect: (personId: string) => void;
@@ -24,6 +25,7 @@ export const PeopleList = ({
   overrides,
   weekStart,
   selectedPersonId,
+  collapsedToSelected,
   search,
   onSearch,
   onSelect
@@ -41,12 +43,20 @@ export const PeopleList = ({
     const term = search.trim().toLowerCase();
     return !term || person.nombre.toLowerCase().includes(term) || fnName.toLowerCase().includes(term);
   });
+  const visiblePeople = collapsedToSelected && selectedPersonId
+    ? filtered.filter((person) => person.id === selectedPersonId)
+    : filtered;
 
   return (
     <aside className="card schedules-people-list">
-      <input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Buscar persona o función" />
+      <input
+        value={search}
+        onChange={(event) => onSearch(event.target.value)}
+        placeholder="Buscar persona o función"
+        disabled={collapsedToSelected}
+      />
       <div className="people-items">
-        {filtered.map((person) => {
+        {visiblePeople.map((person) => {
           const selected = selectedPersonId === person.id;
           const plan = weekPlanByPerson.get(person.id);
           const template = plan?.templateId ? templateById.get(plan.templateId) : null;
