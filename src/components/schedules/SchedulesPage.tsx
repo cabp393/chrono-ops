@@ -128,7 +128,6 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
         onOpenTemplateModal={() => setTemplateModalOpen(true)}
         onUpsertOverride={upsertOverride}
-        onRevertOverride={(dateISO) => setDraftOverrides((prev) => prev.filter((item) => !(item.personId === selectedPersonId && item.dateISO === dateISO)))}
         onReset={resetDraft}
         onSave={() => !hasInvalidSlots && onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides })}
       />
