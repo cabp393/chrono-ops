@@ -1,5 +1,3 @@
-import { formatWeekRange } from '../../lib/dateUtils';
-import { ChevronLeft, ChevronRight, Target } from '../../lib/icons';
 import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { WeekScheduleTable } from './WeekScheduleTable';
 
@@ -11,12 +9,8 @@ type Props = {
   functionWeek: PersonFunctionWeek | undefined;
   overrides: ScheduleOverride[];
   weekStart: Date;
-  isCurrentWeek: boolean;
   hasUnsavedChanges: boolean;
   hasInvalidSlots: boolean;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
-  onCurrentWeek: () => void;
   onTemplateChange: (templateId: string | null) => void;
   onFunctionChange: (functionId: string | null) => void;
   onOpenTemplateModal: () => void;
@@ -25,7 +19,7 @@ type Props = {
   onSave: () => void;
 };
 
-export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, isCurrentWeek, hasUnsavedChanges, hasInvalidSlots, onPrevWeek, onNextWeek, onCurrentWeek, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onReset, onSave }: Props) => {
+export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onReset, onSave }: Props) => {
   if (!person) return <section className="card"><p>Selecciona una persona para editar horarios.</p></section>;
 
   const roleFunctions = functions.filter((item) => item.roleId === person.roleId);
@@ -38,12 +32,6 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
         <div>
           <h3>{person.nombre}</h3>
           <p>{selectedFunction?.nombre ?? 'Sin función asignada esta semana'}</p>
-        </div>
-        <div className="week-controls">
-          <button className={`icon-btn current-week-icon ${isCurrentWeek ? 'active' : ''}`} onClick={onCurrentWeek} title="Semana actual"><Target size={15} /></button>
-          <button className="icon-btn" onClick={onPrevWeek}><ChevronLeft size={16} /></button>
-          <span className="week-label">{formatWeekRange(weekStart)}</span>
-          <button className="icon-btn" onClick={onNextWeek}><ChevronRight size={16} /></button>
         </div>
       </header>
 

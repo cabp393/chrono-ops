@@ -60,6 +60,7 @@ function App() {
       ) : null}
 
       {view === 'schedules' ? <SchedulesPage
+        weekStart={weekStart}
         people={state.people}
         functions={state.functions}
         templates={state.templates}
