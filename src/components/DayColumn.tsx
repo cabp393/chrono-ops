@@ -13,7 +13,7 @@ type Props = {
   shiftLabelMode: ShiftLabelMode;
 };
 
-const SHIFT_BLOCK_WIDTH_PX = 52;
+const SHIFT_BLOCK_WIDTH_PX = 26;
 
 export const DayColumn = ({
   daySegments,
@@ -57,36 +57,38 @@ export const DayColumn = ({
 
   return (
     <div className="day-column" style={{ height: dayHeight }}>
-      <div className="day-tracks" style={{ minWidth: tracksWidth, height: dayHeight }}>
-        <div className="day-grid-slots" style={{ gridTemplateRows: `repeat(${(24 * 60) / scale}, ${blockHeight}px)` }}>
-          {coverage.map((_, blockIndex) => (
-            <div
-              key={blockIndex}
-              className={`grid-slot ${focusBlockIndex === blockIndex ? 'focused' : ''}`}
-            />
-          ))}
+      <div className="day-viewport" style={{ height: dayHeight }}>
+        <div className="day-tracks" style={{ minWidth: tracksWidth, height: dayHeight }}>
+          <div className="day-grid-slots" style={{ gridTemplateRows: `repeat(${(24 * 60) / scale}, ${blockHeight}px)` }}>
+            {coverage.map((_, blockIndex) => (
+              <div
+                key={blockIndex}
+                className={`grid-slot ${focusBlockIndex === blockIndex ? 'focused' : ''}`}
+              />
+            ))}
+          </div>
+
+          {withLayout.map(({ segment, columnIndex }) => {
+            const block = blocksById.get(segment.shiftId);
+            if (!block) return null;
+
+            const start = new Date(segment.segStartISO);
+            const end = new Date(segment.segEndISO);
+            const top = ((start.getHours() * 60 + start.getMinutes()) / scale) * blockHeight;
+            const height = Math.max((((end.getTime() - start.getTime()) / 60000) / scale) * blockHeight, blockHeight * 0.75);
+            const role = rolesById.get(block.roleId);
+
+            return (
+              <ShiftItem
+                key={`${segment.shiftId}-${segment.segStartISO}`}
+                block={block}
+                role={role}
+                compact={height < 48}
+                style={{ top, height, width: SHIFT_BLOCK_WIDTH_PX, left: columnIndex * SHIFT_BLOCK_WIDTH_PX }}
+              />
+            );
+          })}
         </div>
-
-        {withLayout.map(({ segment, columnIndex }) => {
-          const block = blocksById.get(segment.shiftId);
-          if (!block) return null;
-
-          const start = new Date(segment.segStartISO);
-          const end = new Date(segment.segEndISO);
-          const top = ((start.getHours() * 60 + start.getMinutes()) / scale) * blockHeight;
-          const height = Math.max((((end.getTime() - start.getTime()) / 60000) / scale) * blockHeight, blockHeight * 0.75);
-          const role = rolesById.get(block.roleId);
-
-          return (
-            <ShiftItem
-              key={`${segment.shiftId}-${segment.segStartISO}`}
-              block={block}
-              role={role}
-              compact={height < 48}
-              style={{ top, height, width: SHIFT_BLOCK_WIDTH_PX, left: columnIndex * SHIFT_BLOCK_WIDTH_PX }}
-            />
-          );
-        })}
       </div>
     </div>
   );

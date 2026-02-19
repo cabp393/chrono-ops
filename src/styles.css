@@ -76,7 +76,7 @@ select, input {
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   padding: 3px 9px;
-  font-size: 12px;
+  font-size: 10px;
 }
 .chip.muted { opacity: .45; }
 .chip.active { box-shadow: inset 0 0 0 1px currentColor; }
@@ -114,8 +114,9 @@ select, input {
   box-shadow: inset 0 0 0 1px #93c5fd;
 }
 
-.week-grid-card { overflow: auto; max-height: calc(100vh - 220px); padding: 0; }
+.week-grid-card { overflow-y: auto; overflow-x: visible; max-height: calc(100vh - 220px); padding: 0; }
 .week-grid-layout { display: grid; min-width: 1020px; position: relative; }
+.week-grid-layout > * { min-width: 0; }
 .sticky { position: sticky; top: 0; z-index: 8; background: #fff; }
 .time-corner { left: 0; z-index: 9; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }
 .sticky-left { position: sticky; left: 0; z-index: 7; background: #fff; border-right: 1px solid #e2e8f0; }
@@ -126,10 +127,15 @@ select, input {
 .day-column {
   position: relative;
   border-right: 1px solid #f1f5f9;
+  min-width: 0;
+}
+.day-viewport {
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  touch-action: pan-x;
 }
 .day-tracks { position: relative; }
 .day-grid-slots {
@@ -150,15 +156,15 @@ select, input {
   color: #0f172a;
   overflow: hidden;
   text-align: center;
-  padding: 5px 3px;
+  padding: 2px 1px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.shift-item.compact { padding: 3px 5px; }
+.shift-item.compact { padding: 1px 0; }
 .shift-item strong {
   display: inline-block;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1;
   writing-mode: vertical-rl;
@@ -203,7 +209,7 @@ select, input {
 }
 .pending-badge {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 10px;
   color: #b45309;
   background: #fffbeb;
   border: 1px solid #fde68a;
@@ -244,7 +250,7 @@ select, input {
   background: #f8fafc;
   border-radius: 999px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 10px;
   color: #334155;
   display: inline-flex;
   align-items: center;
@@ -302,7 +308,7 @@ select, input {
 .derived-meta {
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: 10px;
   color: #64748b;
   padding: 8px;
   border: 1px solid #e2e8f0;
