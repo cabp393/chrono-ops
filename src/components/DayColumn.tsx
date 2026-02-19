@@ -13,6 +13,8 @@ type Props = {
   shiftLabelMode: ShiftLabelMode;
 };
 
+const SHIFT_BLOCK_WIDTH_PX = 26;
+
 export const DayColumn = ({
   daySegments,
   blocksById,
@@ -26,52 +28,68 @@ export const DayColumn = ({
   const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
 
   const withLayout = useMemo(() => {
-    const sorted = [...daySegments].sort((a, b) => new Date(a.segStartISO).getTime() - new Date(b.segStartISO).getTime());
-    const active: { end: number; lane: number }[] = [];
+    const sorted = [...daySegments].sort((a, b) => {
+      const startDiff = new Date(a.segStartISO).getTime() - new Date(b.segStartISO).getTime();
+      if (startDiff !== 0) return startDiff;
+      return new Date(a.segEndISO).getTime() - new Date(b.segEndISO).getTime();
+    });
+
+    const columnEnds: number[] = [];
+
     return sorted.map((segment) => {
       const start = new Date(segment.segStartISO).getTime();
       const end = new Date(segment.segEndISO).getTime();
-      for (let i = active.length - 1; i >= 0; i -= 1) if (active[i].end <= start) active.splice(i, 1);
-      const occupied = new Set(active.map((slot) => slot.lane));
-      let lane = 0;
-      while (occupied.has(lane)) lane += 1;
-      active.push({ end, lane });
-      const overlap = active.length;
-      return { segment, lane, overlap };
+
+      let columnIndex = columnEnds.findIndex((lastEnd) => start >= lastEnd);
+      if (columnIndex === -1) {
+        columnIndex = columnEnds.length;
+        columnEnds.push(end);
+      } else {
+        columnEnds[columnIndex] = end;
+      }
+
+      return { segment, columnIndex };
     });
   }, [daySegments]);
 
+  const columnCount = Math.max(withLayout.reduce((max, item) => Math.max(max, item.columnIndex + 1), 0), 1);
+  const tracksWidth = columnCount * SHIFT_BLOCK_WIDTH_PX;
+
   return (
-    <div className="day-column" style={{ height: dayHeight, gridTemplateRows: `repeat(${(24 * 60) / scale}, ${blockHeight}px)` }}>
-      {coverage.map((_, blockIndex) => (
-        <div
-          key={blockIndex}
-          className={`grid-slot ${focusBlockIndex === blockIndex ? 'focused' : ''}`}
-        />
-      ))}
+    <div className="day-column" style={{ height: dayHeight }}>
+      <div className="day-viewport" style={{ height: dayHeight }}>
+        <div className="day-tracks" style={{ minWidth: tracksWidth, height: dayHeight }}>
+          <div className="day-grid-slots" style={{ gridTemplateRows: `repeat(${(24 * 60) / scale}, ${blockHeight}px)` }}>
+            {coverage.map((_, blockIndex) => (
+              <div
+                key={blockIndex}
+                className={`grid-slot ${focusBlockIndex === blockIndex ? 'focused' : ''}`}
+              />
+            ))}
+          </div>
 
-      {withLayout.map(({ segment, lane, overlap }) => {
-        const block = blocksById.get(segment.shiftId);
-        if (!block) return null;
+          {withLayout.map(({ segment, columnIndex }) => {
+            const block = blocksById.get(segment.shiftId);
+            if (!block) return null;
 
-        const start = new Date(segment.segStartISO);
-        const end = new Date(segment.segEndISO);
-        const top = ((start.getHours() * 60 + start.getMinutes()) / scale) * blockHeight;
-        const height = Math.max((((end.getTime() - start.getTime()) / 60000) / scale) * blockHeight, blockHeight * 0.75);
-        const width = `${100 / Math.max(overlap, 1)}%`;
-        const left = `${(100 / Math.max(overlap, 1)) * lane}%`;
-        const role = rolesById.get(block.roleId);
+            const start = new Date(segment.segStartISO);
+            const end = new Date(segment.segEndISO);
+            const top = ((start.getHours() * 60 + start.getMinutes()) / scale) * blockHeight;
+            const height = Math.max((((end.getTime() - start.getTime()) / 60000) / scale) * blockHeight, blockHeight * 0.75);
+            const role = rolesById.get(block.roleId);
 
-        return (
-          <ShiftItem
-            key={`${segment.shiftId}-${segment.segStartISO}`}
-            block={block}
-            role={role}
-            compact={height < 48}
-            style={{ top, height, width, left }}
-          />
-        );
-      })}
+            return (
+              <ShiftItem
+                key={`${segment.shiftId}-${segment.segStartISO}`}
+                block={block}
+                role={role}
+                compact={height < 48}
+                style={{ top, height, width: SHIFT_BLOCK_WIDTH_PX, left: columnIndex * SHIFT_BLOCK_WIDTH_PX }}
+              />
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
