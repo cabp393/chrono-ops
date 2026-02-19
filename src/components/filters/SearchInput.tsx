@@ -1,3 +1,4 @@
+import { Search, X } from '../../lib/lucide';
 type Props = {
   value: string;
   onChange: (value: string) => void;
@@ -14,7 +15,7 @@ export const SearchInput = ({
   ariaLabel = 'Buscar por nombre o función'
 }: Props) => (
   <div className="search-input-wrap">
-    <span className="search-icon" aria-hidden="true">⌕</span>
+    <Search size={16} className="search-icon" aria-hidden="true" />
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -22,9 +23,7 @@ export const SearchInput = ({
       aria-label={ariaLabel}
     />
     {value && (
-      <button type="button" className="clear-search" onClick={onClear} aria-label="Limpiar búsqueda">
-        ×
-      </button>
+      <button type="button" className="clear-search" onClick={onClear} aria-label="Limpiar búsqueda"><X size={16} /></button>
     )}
   </div>
 );

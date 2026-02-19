@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Target } from '../lib/icons';
+import { ChevronLeft, ChevronRight, Search, Target } from '../lib/lucide';
+import { IconButton } from './ui/IconButton';
 
 type ViewMode = 'week' | 'schedules' | 'personal';
 
@@ -34,23 +35,16 @@ export const HeaderBar = ({
         </div>
       </div>
       <div className="header-actions">
-        {view === 'week' ? <button className="ghost" onClick={onOpenFilters}>Filtros</button> : null}
+        {view === 'week' ? <button className="ghost" onClick={onOpenFilters}><Search size={16} />Filtros</button> : null}
       </div>
     </div>
 
     {view === 'week' ? (
       <div className="week-controls">
-        <button
-          className={`icon-btn current-week-icon ${isCurrentWeek ? 'active' : ''}`}
-          onClick={onCurrentWeek}
-          title="Ir a semana actual"
-          aria-label="Ir a semana actual"
-        >
-          <Target size={15} />
-        </button>
-        <button className="icon-btn" onClick={onPrevWeek} aria-label="Semana anterior"><ChevronLeft size={16} /></button>
+        <IconButton className={`current-week-icon ${isCurrentWeek ? 'active' : ''}`} onClick={onCurrentWeek} label="Ir a semana actual"><Target size={16} /></IconButton>
+        <IconButton onClick={onPrevWeek} label="Semana anterior"><ChevronLeft size={16} /></IconButton>
         <span className="week-label">{weekLabel}</span>
-        <button className="icon-btn" onClick={onNextWeek} aria-label="Semana siguiente"><ChevronRight size={16} /></button>
+        <IconButton onClick={onNextWeek} label="Semana siguiente"><ChevronRight size={16} /></IconButton>
       </div>
     ) : null}
   </header>

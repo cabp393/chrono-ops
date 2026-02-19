@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { DAY_KEYS, DAY_LABELS, cloneTemplate, createTemplate, formatSlot, slotValidationError } from '../../lib/scheduleUtils';
 import type { ScheduleDaySlot, ScheduleTemplate } from '../../types';
 import { TimeInput24 } from '../TimeInput24';
+import { AppModal } from '../ui/AppModal';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { Plus, Save, Trash2 } from '../../lib/lucide';
 
 type Props = {
   open: boolean;
@@ -15,6 +18,7 @@ const clone = (templates: ScheduleTemplate[]) => templates.map((item) => cloneTe
 export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
   const [draft, setDraft] = useState<ScheduleTemplate[]>(() => clone(templates));
   const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id ?? null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const selected = useMemo(() => draft.find((item) => item.id === selectedId) ?? null, [draft, selectedId]);
 
@@ -71,8 +75,8 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <section className="modal templates-modal">
+    <>
+    <AppModal open={open} onOpenChange={(next) => !next && onClose()} title="Plantillas" className="templates-modal" footer={<><button className="ghost" onClick={() => { resetFromProps(); onClose(); }}>Cancelar</button><button className="primary" disabled={hasInvalidSlots} onClick={() => { onSave(draft); onClose(); }}><Save size={16} />Guardar y cerrar</button></>}> 
         <div className="templates-head">
           <h3>Plantillas</h3>
           <button onClick={() => { resetFromProps(); onClose(); }}>Cerrar</button>
@@ -89,7 +93,7 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
               const next = createTemplate(`Nueva plantilla ${draft.length + 1}`);
               setDraft((prev) => [...prev, next]);
               setSelectedId(next.id);
-            }}>+ Crear plantilla</button>
+            }}><Plus size={16} />Crear plantilla</button>
           </aside>
 
           <div className="template-editor">
@@ -107,12 +111,7 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
                     setDraft((prev) => [...prev, duplicate]);
                     setSelectedId(duplicate.id);
                   }}>Duplicar</button>
-                  <button onClick={() => {
-                    if (!window.confirm('¿Eliminar plantilla?')) return;
-                    const filtered = draft.filter((item) => item.id !== selected.id);
-                    setDraft(filtered);
-                    setSelectedId(filtered[0]?.id ?? null);
-                  }}>Eliminar</button>
+                  <button onClick={() => setConfirmDelete(true)}><Trash2 size={16} />Eliminar</button>
                 </div>
 
                 <div className="template-quick-actions">
@@ -140,12 +139,9 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
           </div>
         </div>
 
-        <div className="modal-actions">
-          {hasInvalidSlots ? <p className="error">Corrige horas inválidas antes de guardar.</p> : null}
-          <button className="ghost" onClick={() => { resetFromProps(); onClose(); }}>Cancelar</button>
-          <button className="primary" disabled={hasInvalidSlots} onClick={() => { onSave(draft); onClose(); }}>Guardar y cerrar</button>
-        </div>
-      </section>
-    </div>
+        {hasInvalidSlots ? <p className="error">Corrige horas inválidas antes de guardar.</p> : null}
+    </AppModal>
+    <ConfirmDialog open={confirmDelete} onOpenChange={setConfirmDelete} title="Eliminar plantilla" description="Se eliminará la plantilla seleccionada." onConfirm={() => { if (!selected) return; const filtered = draft.filter((item) => item.id !== selected.id); setDraft(filtered); setSelectedId(filtered[0]?.id ?? null); }} confirmLabel="Eliminar" />
+    </>
   );
 };

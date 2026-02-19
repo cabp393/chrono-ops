@@ -9,7 +9,7 @@ body {
   margin: 0;
   background: #f3f6fa;
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 button, input, select { font: inherit; font-size: 14px; }
 
@@ -27,7 +27,7 @@ button, input, select { font: inherit; font-size: 14px; }
   backdrop-filter: blur(6px);
 }
 .header-top-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.brand, .coverage-card h3, .filters-head h3, .filter-section h4, .week-label { font-size: 14px; font-weight: 600; margin: 0; }
+.brand, .coverage-card h3, .filters-head h3, .filter-section h4, .week-label, .card h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .week-controls, .header-actions { display: flex; align-items: center; gap: 6px; }
 .week-controls { flex-wrap: nowrap; }
 .icon-btn { width: 30px; height: 30px; justify-content: center; padding: 0; }
@@ -69,14 +69,14 @@ select, input {
 .coverage-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .coverage-card p, .sub-control > p, .function-group > p, .time-axis > div { margin: 0; font-size: 12px; color: #64748b; }
 .segmented { display: inline-flex; border: 1px solid #dbe3ef; border-radius: 9px; padding: 2px; background: #f8fafc; }
-.segmented button { border: 0; padding: 5px 9px; font-size: 13px; background: transparent; border-radius: 7px; }
+.segmented button { border: 0; padding: 5px 9px; font-size: 14px; background: transparent; border-radius: 7px; }
 .segmented button.active { background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .chip {
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   padding: 3px 9px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .chip.muted { opacity: .45; }
 .chip.active { box-shadow: inset 0 0 0 1px currentColor; }
@@ -105,7 +105,7 @@ select, input {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.28);
   z-index: 5;
 }
-.coverage-popover strong { font-size: 13px; }
+.coverage-popover strong { font-size: 14px; }
 .coverage-popover span { font-size: 12px; opacity: 0.95; }
 .coverage-card { position: relative; }
 .current-week-icon.active {
@@ -164,7 +164,7 @@ select, input {
 .shift-item.compact { padding: 1px 0; }
 .shift-item strong {
   display: inline-block;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
   writing-mode: vertical-rl;
@@ -209,7 +209,7 @@ select, input {
 }
 .pending-badge {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 12px;
   color: #b45309;
   background: #fffbeb;
   border: 1px solid #fde68a;
@@ -246,11 +246,12 @@ select, input {
 .sub-control { display: grid; gap: 6px; }
 .pill-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-pill {
+  font-size: 12px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   border-radius: 999px;
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 12px;
   color: #334155;
   display: inline-flex;
   align-items: center;
@@ -309,14 +310,25 @@ select, input {
   background: #fff;
   width: min(460px, 92vw);
   border-radius: 14px;
-  padding: 14px;
+  padding: 12px;
   display: grid;
   gap: 10px;
 }
+.app-modal-header, .app-modal-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.app-modal-header h3 { margin:0; display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; }
+.app-modal-body { display:grid; gap:8px; }
+.app-modal-body label { display:grid; gap:4px; font-size:12px; color:#64748b; }
+.app-modal-body input, .app-modal-body select { font-size:14px; color:#0f172a; }
+button.danger { background:#dc2626; border-color:#dc2626; color:#fff; }
+.section-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.section-toggle { border:0; background:transparent; padding:0; }
+.section-toggle strong { font-size:14px; }
+.color-field { display:flex; align-items:center; gap:8px; }
+.color-field input[type="color"] { width:44px; height:32px; padding:2px; }
 .derived-meta {
   display: grid;
   gap: 4px;
-  font-size: 10px;
+  font-size: 12px;
   color: #64748b;
   padding: 8px;
   border: 1px solid #e2e8f0;

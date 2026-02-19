@@ -1,3 +1,4 @@
+import { Check, RotateCcw } from '../../lib/lucide';
 import type { ReactNode } from 'react';
 import { SearchInput } from './SearchInput';
 
@@ -30,8 +31,8 @@ export const FilterFooter = ({
       ariaLabel="Buscar trabajador"
     />
     <div className="filters-footer-actions">
-      <button type="button" className="footer-reset" onClick={onReset}>Reiniciar</button>
-      <button type="button" className="primary footer-apply" disabled={disabledApply} onClick={onApply}>Aplicar filtros</button>
+      <button type="button" className="footer-reset" onClick={onReset}><RotateCcw size={16} />Reiniciar</button>
+      <button type="button" className="primary footer-apply" disabled={disabledApply} onClick={onApply}><Check size={16} />Aplicar filtros</button>
     </div>
   </div>
 );

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Copy, Save } from '../lib/lucide';
 import { fromLocalDateAndTime, toLocalDateInput, toLocalTimeInput } from '../lib/dateUtils';
 import type { Function, Person, Role, Shift } from '../types';
 import { TimeInput24 } from './TimeInput24';
+import { AppModal } from './ui/AppModal';
 
 type Props = {
   open: boolean;
@@ -46,14 +48,8 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
   }, [open, editing, people, defaultStart]);
 
   const selectedPerson = useMemo(() => people.find((p) => p.id === personId), [personId, people]);
-  const selectedFunction = useMemo(
-    () => functions.find((fn) => fn.roleId === selectedPerson?.roleId),
-    [functions, selectedPerson?.roleId]
-  );
-  const selectedRole = useMemo(
-    () => roles.find((role) => role.id === selectedFunction?.roleId),
-    [roles, selectedFunction?.roleId]
-  );
+  const selectedFunction = useMemo(() => functions.find((fn) => fn.roleId === selectedPerson?.roleId), [functions, selectedPerson?.roleId]);
+  const selectedRole = useMemo(() => roles.find((role) => role.id === selectedFunction?.roleId), [roles, selectedFunction?.roleId]);
 
   const filteredPeople = useMemo(() => {
     const q = personQuery.trim().toLowerCase();
@@ -61,54 +57,30 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
     return people.filter((person) => person.nombre.toLowerCase().includes(q));
   }, [people, personQuery]);
 
-  if (!open) return null;
-
   const submit = () => {
     const start = new Date(fromLocalDateAndTime(startDate, startTime));
     const end = new Date(fromLocalDateAndTime(endDate, endTime));
-    if (!(start < end)) {
-      setError('La hora de fin debe ser mayor al inicio.');
-      return;
-    }
-    if (!personId) {
-      setError('Debes seleccionar una persona.');
-      return;
-    }
+    if (!(start < end)) return setError('La hora de fin debe ser mayor al inicio.');
+    if (!personId) return setError('Debes seleccionar una persona.');
     onSave({ id: editing?.id ?? crypto.randomUUID(), personId, startISO: start.toISOString(), endISO: end.toISOString() });
     onClose();
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{editing ? 'Editar turno' : 'Agregar turno'}</h3>
-        {error && <p className="error">{error}</p>}
-
-        <label>Buscar persona
-          <input value={personQuery} onChange={(e) => setPersonQuery(e.target.value)} placeholder="Buscar persona..." />
-        </label>
-
-        <label>Persona
-          <select value={personId} onChange={(e) => { setPersonId(e.target.value); setError(''); }}>
-            {filteredPeople.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-          </select>
-        </label>
-
-        <div className="derived-meta">
-          <span><strong>Función:</strong> {selectedFunction?.nombre ?? 'Sin función'}</span>
-          <span><strong>Rol:</strong> {selectedRole?.nombre ?? 'Sin rol'}</span>
-        </div>
-
-        <label>Fecha inicio<input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setError(''); }} /></label>
-        <label>Hora inicio<TimeInput24 value={startTime} onChange={(value) => { setStartTime(value); setError(''); }} step={60} /></label>
-        <label>Fecha fin<input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setError(''); }} /></label>
-        <label>Hora fin<TimeInput24 value={endTime} onChange={(value) => { setEndTime(value); setError(''); }} step={60} /></label>
-        <div className="modal-actions">
-          {editing && onDuplicate && <button onClick={() => onDuplicate({ id: editing.id, personId, startISO: new Date(fromLocalDateAndTime(startDate, startTime)).toISOString(), endISO: new Date(fromLocalDateAndTime(endDate, endTime)).toISOString() }, 1)}>Duplicar +1 día</button>}
-          <button onClick={onClose}>Cancelar</button>
-          <button className="primary" onClick={submit}>Guardar</button>
-        </div>
-      </div>
-    </div>
+    <AppModal
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={editing ? 'Editar turno' : 'Agregar turno'}
+      footer={<><button onClick={onClose}>Cancelar</button>{editing && onDuplicate ? <button onClick={() => onDuplicate({ id: editing.id, personId, startISO: new Date(fromLocalDateAndTime(startDate, startTime)).toISOString(), endISO: new Date(fromLocalDateAndTime(endDate, endTime)).toISOString() }, 1)}><Copy size={16} />Duplicar +1 día</button> : null}<button className="primary" onClick={submit}><Save size={16} />Guardar</button></>}
+    >
+      {error && <p className="error">{error}</p>}
+      <label>Buscar persona<input value={personQuery} onChange={(e) => setPersonQuery(e.target.value)} placeholder="Buscar persona..." /></label>
+      <label>Persona<select value={personId} onChange={(e) => { setPersonId(e.target.value); setError(''); }}>{filteredPeople.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></label>
+      <div className="derived-meta"><span><strong>Función:</strong> {selectedFunction?.nombre ?? 'Sin función'}</span><span><strong>Rol:</strong> {selectedRole?.nombre ?? 'Sin rol'}</span></div>
+      <label>Fecha inicio<input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setError(''); }} /></label>
+      <label>Hora inicio<TimeInput24 value={startTime} onChange={(value) => { setStartTime(value); setError(''); }} step={60} /></label>
+      <label>Fecha fin<input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setError(''); }} /></label>
+      <label>Hora fin<TimeInput24 value={endTime} onChange={(value) => { setEndTime(value); setError(''); }} step={60} /></label>
+    </AppModal>
   );
 };

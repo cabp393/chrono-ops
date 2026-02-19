@@ -1,5 +1,5 @@
 import { formatWeekRange } from '../../lib/dateUtils';
-import { ChevronLeft, ChevronRight, Target } from '../../lib/icons';
+import { ChevronLeft, ChevronRight, Target } from '../../lib/lucide';
 import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { WeekScheduleTable } from './WeekScheduleTable';
 

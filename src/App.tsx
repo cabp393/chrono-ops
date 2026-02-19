@@ -13,11 +13,12 @@ import type { AppliedViewState } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
 const DEFAULT_VIEW_STATE: AppliedViewState = { timeScale: 60, shiftLabelMode: 'function', searchText: '', selectedPersonId: null, roleIds: [], functionIds: [] };
+const withRoleFallback = <T extends { roles: { id: string; color?: string }[] }>(value: T): T => ({ ...value, roles: value.roles.map((role) => ({ ...role, color: role.color ?? '#94a3b8' })) });
 
 function App() {
   const [view, setView] = useState<'week' | 'schedules' | 'personal'>('week');
   const [weekStart, setWeekStart] = useState(todayWeekStart);
-  const [state, setState] = useState(() => loadAll(todayWeekStart));
+  const [state, setState] = useState(() => withRoleFallback(loadAll(todayWeekStart)));
   const [appliedState, setAppliedState] = useState<AppliedViewState>(() => loadViewStatePreference());
   const [focusBlock, setFocusBlock] = useState<{ dayIndex: number; blockIndex: number } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -66,7 +67,7 @@ function App() {
         personWeekPlans={state.personWeekPlans}
         personFunctionWeeks={state.personFunctionWeeks}
         overrides={state.overrides}
-        onChange={(next) => { const merged = saveAll({ ...state, ...next }); setState(merged); }}
+        onChange={(next) => { const merged = withRoleFallback(saveAll({ ...state, ...next })); setState(merged); }}
       /> : null}
 
       {view === 'personal' ? <PersonalPage
@@ -75,33 +76,34 @@ function App() {
         functions={state.functions}
         onCreatePerson={() => {
           const roleId = state.roles[0]?.id ?? '';
-          const next = saveAll({ ...state, people: [...state.people, { id: crypto.randomUUID(), nombre: 'Nuevo trabajador', roleId }] });
+          const next = withRoleFallback(saveAll({ ...state, people: [...state.people, { id: crypto.randomUUID(), nombre: 'Nuevo trabajador', roleId }] }));
           setState(next);
         }}
         onSavePerson={(person) => {
           const weekISO = weekStartISOFromDate(new Date());
           const validFunctionIds = new Set(state.functions.filter((fn) => fn.roleId === person.roleId).map((fn) => fn.id));
-          const next = saveAll({ ...state, people: state.people.map((row) => row.id === person.id ? person : row), personFunctionWeeks: clearIncompatibleWeekFunction(state.personFunctionWeeks, person.id, weekISO, validFunctionIds) });
+          const next = withRoleFallback(saveAll({ ...state, people: state.people.map((row) => row.id === person.id ? person : row), personFunctionWeeks: clearIncompatibleWeekFunction(state.personFunctionWeeks, person.id, weekISO, validFunctionIds) }));
           setState(next);
         }}
-        onDeletePerson={(personId) => setState(saveAll(removePersonCascade(state, personId)))}
+        onDeletePerson={(personId) => setState(withRoleFallback(saveAll(removePersonCascade(state, personId))))}
         onCreateRole={(name, color) => {
-          const role = { id: crypto.randomUUID(), nombre: name, color };
-          const next = saveAll({ ...state, roles: [...state.roles, role] });
+          const role = { id: crypto.randomUUID(), nombre: name, color: color ?? '#94a3b8' };
+          const next = withRoleFallback(saveAll({ ...state, roles: [...state.roles, role] }));
           setState(next);
           return role.id;
         }}
+        onUpdateRole={(roleId, updates) => setState(withRoleFallback(saveAll({ ...state, roles: state.roles.map((role) => role.id === roleId ? { ...role, ...updates } : role) })))}
         onDeleteRole={(roleId) => {
           if (state.people.some((person) => person.roleId === roleId)) return false;
-          const next = saveAll({ ...state, roles: state.roles.filter((role) => role.id !== roleId), functions: state.functions.filter((fn) => fn.roleId !== roleId) });
+          const next = withRoleFallback(saveAll({ ...state, roles: state.roles.filter((role) => role.id !== roleId), functions: state.functions.filter((fn) => fn.roleId !== roleId) }));
           setState(next);
           return true;
         }}
-        onCreateFunction={(roleId, name) => setState(saveAll({ ...state, functions: [...state.functions, { id: crypto.randomUUID(), roleId, nombre: name }] }))}
-        onRenameFunction={(functionId, name) => setState(saveAll({ ...state, functions: state.functions.map((fn) => fn.id === functionId ? { ...fn, nombre: name } : fn) }))}
+        onCreateFunction={(roleId, name) => setState(withRoleFallback(saveAll({ ...state, functions: [...state.functions, { id: crypto.randomUUID(), roleId, nombre: name }] })))}
+        onRenameFunction={(functionId, name) => setState(withRoleFallback(saveAll({ ...state, functions: state.functions.map((fn) => fn.id === functionId ? { ...fn, nombre: name } : fn) })))}
         onDeleteFunction={(functionId) => {
           if (state.personFunctionWeeks.some((row) => row.functionId === functionId)) return false;
-          setState(saveAll({ ...state, functions: state.functions.filter((fn) => fn.id !== functionId) }));
+          setState(withRoleFallback(saveAll({ ...state, functions: state.functions.filter((fn) => fn.id !== functionId) })));
           return true;
         }}
       /> : null}
