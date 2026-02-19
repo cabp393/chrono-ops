@@ -1,14 +1,16 @@
-import type { Person, PersonSchedule, ScheduleOverride, ScheduleTemplate } from '../types';
+import type { Person, PersonSchedule, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../types';
 import { addDays, startOfWeekMonday } from './dateUtils';
 import { createEmptyTemplateDays, toISODate } from './scheduleUtils';
 
 const TEMPLATES_KEY = 'shiftboard_templates';
 const PERSON_SCHEDULES_KEY = 'shiftboard_personSchedules';
+const PERSON_WEEK_PLANS_KEY = 'shiftboard_personWeekPlans';
+const LEGACY_FUNCTION_WEEK_KEY = 'shiftboard_functionWeek';
 const OVERRIDES_KEY = 'shiftboard_overrides';
 
 export type ScheduleData = {
   templates: ScheduleTemplate[];
-  personSchedules: PersonSchedule[];
+  personWeekPlans: PersonWeekPlan[];
   overrides: ScheduleOverride[];
 };
 
@@ -65,12 +67,22 @@ const createDemoTemplates = (): ScheduleTemplate[] => {
 
 const createDemoScheduleData = (people: Person[]): ScheduleData => {
   const templates = createDemoTemplates();
-  const personSchedules: PersonSchedule[] = people.map((person, index) => ({
+  const weekStartISO = toISODate(startOfWeekMonday(new Date()));
+  const personWeekPlans: PersonWeekPlan[] = people.map((person, index) => ({
     personId: person.id,
-    templateId: index % 3 === 0 ? templates[0].id : index % 3 === 1 ? templates[1].id : null
+    weekStartISO,
+    templateId: index % 3 === 0 ? templates[0].id : index % 3 === 1 ? templates[1].id : null,
+    functionId: person.functionId
   }));
 
-  if (people[2]) personSchedules[2] = { personId: people[2].id, templateId: templates[2].id };
+  if (people[2]) {
+    personWeekPlans[2] = {
+      personId: people[2].id,
+      weekStartISO,
+      templateId: templates[2].id,
+      functionId: people[2].functionId
+    };
+  }
 
   const weekStart = startOfWeekMonday(new Date());
   const thursday = toISODate(addDays(weekStart, 3));
@@ -98,20 +110,50 @@ const createDemoScheduleData = (people: Person[]): ScheduleData => {
     });
   }
 
-  return { templates, personSchedules, overrides };
+  return { templates, personWeekPlans, overrides };
+};
+
+const parseLegacyFunctionWeek = (): Map<string, string | null> => {
+  const raw = parseJson<unknown>(localStorage.getItem(LEGACY_FUNCTION_WEEK_KEY), null);
+  const result = new Map<string, string | null>();
+  if (!raw) return result;
+  if (Array.isArray(raw)) {
+    raw.forEach((item) => {
+      if (!item || typeof item !== 'object') return;
+      const row = item as Record<string, unknown>;
+      if (typeof row.personId !== 'string') return;
+      result.set(row.personId, typeof row.functionId === 'string' ? row.functionId : null);
+    });
+    return result;
+  }
+  if (typeof raw === 'object') {
+    Object.entries(raw as Record<string, unknown>).forEach(([personId, functionId]) => {
+      result.set(personId, typeof functionId === 'string' ? functionId : null);
+    });
+  }
+  return result;
 };
 
 export const loadScheduleData = (people: Person[]): ScheduleData => {
   const rawTemplates = parseJson<unknown[]>(localStorage.getItem(TEMPLATES_KEY), []);
+  const rawPersonWeekPlans = parseJson<PersonWeekPlan[]>(localStorage.getItem(PERSON_WEEK_PLANS_KEY), []);
   const rawPersonSchedules = parseJson<PersonSchedule[]>(localStorage.getItem(PERSON_SCHEDULES_KEY), []);
   const rawOverrides = parseJson<ScheduleOverride[]>(localStorage.getItem(OVERRIDES_KEY), []);
 
   const templates = rawTemplates.map(normalizeTemplate).filter((item): item is ScheduleTemplate => !!item);
   const personIds = new Set(people.map((item) => item.id));
 
-  const personSchedules = rawPersonSchedules
-    .filter((item) => item && typeof item.personId === 'string' && personIds.has(item.personId))
-    .map((item) => ({ personId: item.personId, templateId: typeof item.templateId === 'string' ? item.templateId : null }));
+  const personWeekPlans = rawPersonWeekPlans
+    .filter((item) => item
+      && typeof item.personId === 'string'
+      && personIds.has(item.personId)
+      && typeof item.weekStartISO === 'string')
+    .map((item) => ({
+      personId: item.personId,
+      weekStartISO: item.weekStartISO,
+      templateId: typeof item.templateId === 'string' ? item.templateId : null,
+      functionId: typeof item.functionId === 'string' ? item.functionId : null
+    }));
 
   const overrides = rawOverrides.filter((item) => item
     && typeof item.id === 'string'
@@ -121,17 +163,33 @@ export const loadScheduleData = (people: Person[]): ScheduleData => {
     && (item.start === null || typeof item.start === 'string')
     && (item.end === null || typeof item.end === 'string'));
 
-  if (templates.length === 0 && personSchedules.length === 0 && overrides.length === 0) {
+  if (templates.length === 0 && personWeekPlans.length === 0 && rawPersonSchedules.length === 0 && overrides.length === 0) {
     const demo = createDemoScheduleData(people);
     saveScheduleData(demo);
     return demo;
   }
 
-  return { templates, personSchedules, overrides };
+  if (personWeekPlans.length > 0) {
+    return { templates, personWeekPlans, overrides };
+  }
+
+  const weekStartISO = toISODate(startOfWeekMonday(new Date()));
+  const legacyFunctions = parseLegacyFunctionWeek();
+  const migratedPlans = rawPersonSchedules
+    .filter((item) => item && typeof item.personId === 'string' && personIds.has(item.personId))
+    .map((item) => ({
+      personId: item.personId,
+      weekStartISO,
+      templateId: typeof item.templateId === 'string' ? item.templateId : null,
+      functionId: legacyFunctions.get(item.personId) ?? people.find((person) => person.id === item.personId)?.functionId ?? null
+    }))
+    .filter((item) => item.templateId || item.functionId);
+
+  return { templates, personWeekPlans: migratedPlans, overrides };
 };
 
-export const saveScheduleData = ({ templates, personSchedules, overrides }: ScheduleData) => {
+export const saveScheduleData = ({ templates, personWeekPlans, overrides }: ScheduleData) => {
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-  localStorage.setItem(PERSON_SCHEDULES_KEY, JSON.stringify(personSchedules));
+  localStorage.setItem(PERSON_WEEK_PLANS_KEY, JSON.stringify(personWeekPlans));
   localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
 };

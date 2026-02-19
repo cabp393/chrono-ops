@@ -1,6 +1,6 @@
 import { addDays } from './dateUtils';
 import { resolveSchedule, toISODate } from './scheduleUtils';
-import type { Function, Person, PersonSchedule, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
+import type { Function, Person, PersonWeekPlan, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
 
 const buildLocalIso = (dateISO: string, timeHHMM: string) => `${dateISO}T${timeHHMM}:00`;
 
@@ -11,23 +11,29 @@ export const buildWeekScheduleBlocks = (
   people: Person[],
   functions: Function[],
   templates: ScheduleTemplate[],
-  personSchedules: PersonSchedule[],
+  personWeekPlans: PersonWeekPlan[],
   overrides: ScheduleOverride[],
   shiftLabelMode: ShiftLabelMode
 ): ScheduleBlock[] => {
+  const weekStartISO = toISODate(weekStart);
   const functionsById = new Map(functions.map((fn) => [fn.id, fn]));
   const templatesById = new Map(templates.map((tpl) => [tpl.id, tpl]));
-  const assignmentByPersonId = new Map(personSchedules.map((item) => [item.personId, item.templateId]));
+  const planByPersonId = new Map(
+    personWeekPlans
+      .filter((item) => item.weekStartISO === weekStartISO)
+      .map((item) => [item.personId, item])
+  );
 
   return people.flatMap((person) => {
-    const fn = functionsById.get(person.functionId);
+    const plan = planByPersonId.get(person.id);
+    if (!plan) return [];
+    const fn = plan.functionId ? functionsById.get(plan.functionId) : undefined;
     if (!fn) return [];
 
     return Array.from({ length: 7 }, (_, dayIndex) => {
       const date = addDays(weekStart, dayIndex);
       const dateISO = toISODate(date);
-      const templateId = assignmentByPersonId.get(person.id) ?? null;
-      const template = templateId ? templatesById.get(templateId) : undefined;
+      const template = plan.templateId ? templatesById.get(plan.templateId) : undefined;
       const { slot } = resolveSchedule(person.id, dateISO, template, overrides);
 
       if (!slot.start || !slot.end) return null;

@@ -270,6 +270,8 @@ select, input {
 .function-group { display: grid; gap: 7px; }
 .function-group > p { font-weight: 600; }
 
+.empty-state { margin: 0; color: #64748b; font-size: 12px; }
+
 .filters-footer {
   position: sticky;
   bottom: 0;
@@ -370,7 +372,7 @@ body.drawer-open { overflow: hidden; }
 .schedule-editor-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .schedule-editor-header p { margin: 2px 0 0; color: #64748b; font-size: 12px; }
 .template-assignment-card { display: grid; gap: 8px; }
-.template-assignment-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.template-assignment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
 .template-assignment-card p { margin: 0; color: #64748b; }
 
 .schedule-week-card { display: grid; gap: 8px; }
@@ -401,5 +403,6 @@ body.drawer-open { overflow: hidden; }
   .day-controls { grid-template-columns: 1fr 1fr; }
   .templates-body { grid-template-columns: minmax(0, 1fr); }
   .template-day-row { grid-template-columns: 42px 1fr 1fr auto; }
+  .template-assignment-row { grid-template-columns: 1fr; }
   .template-day-row .chip { grid-column: 1 / -1; }
 }
