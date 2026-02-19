@@ -1,3 +1,4 @@
+import { Save, X } from 'lucide-react';
 import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { WeekScheduleTable } from './WeekScheduleTable';
 
@@ -20,21 +21,13 @@ type Props = {
 };
 
 export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onReset, onSave }: Props) => {
-  if (!person) return <section className="card"><p>Selecciona una persona para editar horarios.</p></section>;
+  if (!person) return null;
 
   const roleFunctions = functions.filter((item) => item.roleId === person.roleId);
-  const selectedFunction = roleFunctions.find((item) => item.id === functionWeek?.functionId);
   const selectedTemplate = templates.find((item) => item.id === weekPlan?.templateId);
 
   return (
     <section className="schedule-editor-col">
-      <header className="card schedule-editor-header">
-        <div>
-          <h3>{person.nombre}</h3>
-          <p>{selectedFunction?.nombre ?? 'Sin función asignada esta semana'}</p>
-        </div>
-      </header>
-
       <section className="card template-assignment-card">
         <h3>Asignación semanal</h3>
         {!weekPlan ? <p className="empty-state">Semana sin asignación. Selecciona función y plantilla, luego guarda cambios.</p> : null}
@@ -54,13 +47,18 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
 
       <WeekScheduleTable personId={person.id} weekStart={weekStart} template={selectedTemplate} overrides={overrides} weekAssigned={!!weekPlan} onUpsertOverride={onUpsertOverride} />
 
-      <footer className="filters-footer schedule-footer">
-        <div className="filters-footer-actions">
-          <button className="footer-reset" onClick={onReset}>Reiniciar</button>
-          <button className="primary footer-apply" disabled={hasInvalidSlots} onClick={onSave}>Guardar cambios</button>
+      {hasInvalidSlots ? <p className="error schedule-inline-error">Corrige horarios inválidos antes de guardar.</p> : null}
+
+      <footer className="schedule-footer">
+        <span className="schedule-unsaved-note">{hasUnsavedChanges ? 'Cambios sin guardar' : ''}</span>
+        <div className="schedule-footer-actions">
+          <button className="icon-btn schedule-action-btn" onClick={onReset} aria-label="Cancelar" title="Cancelar">
+            <X size={16} />
+          </button>
+          <button className="icon-btn primary schedule-action-btn" disabled={hasInvalidSlots} onClick={onSave} aria-label="Guardar" title="Guardar">
+            <Save size={16} />
+          </button>
         </div>
-        {hasInvalidSlots ? <span className="error">Corrige horarios inválidos antes de guardar.</span> : null}
-        {hasUnsavedChanges ? <span className="pending-badge">Cambios sin guardar</span> : null}
       </footer>
     </section>
   );
