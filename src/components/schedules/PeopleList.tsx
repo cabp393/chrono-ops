@@ -1,4 +1,4 @@
-import type { Function, Person, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
+import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { toISODate, weekDates } from '../../lib/scheduleUtils';
 
 type Props = {
@@ -6,6 +6,7 @@ type Props = {
   functions: Function[];
   templates: ScheduleTemplate[];
   personWeekPlans: PersonWeekPlan[];
+  personFunctionWeeks: PersonFunctionWeek[];
   overrides: ScheduleOverride[];
   weekStart: Date;
   selectedPersonId: string | null;
@@ -19,6 +20,7 @@ export const PeopleList = ({
   functions,
   templates,
   personWeekPlans,
+  personFunctionWeeks,
   overrides,
   weekStart,
   selectedPersonId,
@@ -29,16 +31,15 @@ export const PeopleList = ({
   const weekStartISO = toISODate(weekStart);
   const functionById = new Map(functions.map((fn) => [fn.id, fn]));
   const templateById = new Map(templates.map((template) => [template.id, template]));
-  const weekPlanByPerson = new Map(
-    personWeekPlans.filter((item) => item.weekStartISO === weekStartISO).map((item) => [item.personId, item])
-  );
+  const weekPlanByPerson = new Map(personWeekPlans.filter((item) => item.weekStartISO === weekStartISO).map((item) => [item.personId, item]));
+  const weekFunctionByPerson = new Map(personFunctionWeeks.filter((item) => item.weekStartISO === weekStartISO).map((item) => [item.personId, item.functionId]));
   const weekDays = new Set(weekDates(weekStart).map((date) => toISODate(date)));
 
   const filtered = people.filter((person) => {
-    const fnName = functionById.get(person.functionId)?.nombre ?? '';
+    const fnId = weekFunctionByPerson.get(person.id);
+    const fnName = fnId ? functionById.get(fnId)?.nombre ?? '' : '';
     const term = search.trim().toLowerCase();
-    if (!term) return true;
-    return person.nombre.toLowerCase().includes(term) || fnName.toLowerCase().includes(term);
+    return !term || person.nombre.toLowerCase().includes(term) || fnName.toLowerCase().includes(term);
   });
 
   return (
@@ -49,7 +50,8 @@ export const PeopleList = ({
           const selected = selectedPersonId === person.id;
           const plan = weekPlanByPerson.get(person.id);
           const template = plan?.templateId ? templateById.get(plan.templateId) : null;
-          const weekFunction = plan?.functionId ? functionById.get(plan.functionId) : null;
+          const weekFunctionId = weekFunctionByPerson.get(person.id);
+          const weekFunction = weekFunctionId ? functionById.get(weekFunctionId) : null;
           const hasOverrides = !!plan && overrides.some((item) => item.personId === person.id && weekDays.has(item.dateISO));
           return (
             <button key={person.id} className={`person-item ${selected ? 'active' : ''}`} onClick={() => onSelect(person.id)}>

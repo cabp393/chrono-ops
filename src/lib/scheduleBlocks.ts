@@ -1,6 +1,6 @@
 import { addDays } from './dateUtils';
 import { isValidSlot, resolveSchedule, toISODate } from './scheduleUtils';
-import type { Function, Person, PersonWeekPlan, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
+import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
 
 const buildLocalIso = (dateISO: string, timeHHMM: string) => `${dateISO}T${timeHHMM}:00`;
 
@@ -12,6 +12,7 @@ export const buildWeekScheduleBlocks = (
   functions: Function[],
   templates: ScheduleTemplate[],
   personWeekPlans: PersonWeekPlan[],
+  personFunctionWeeks: PersonFunctionWeek[],
   overrides: ScheduleOverride[],
   shiftLabelMode: ShiftLabelMode
 ): ScheduleBlock[] => {
@@ -23,11 +24,17 @@ export const buildWeekScheduleBlocks = (
       .filter((item) => item.weekStartISO === weekStartISO)
       .map((item) => [item.personId, item])
   );
+  const functionByPersonId = new Map(
+    personFunctionWeeks
+      .filter((item) => item.weekStartISO === weekStartISO)
+      .map((item) => [item.personId, item.functionId])
+  );
 
   return people.flatMap((person) => {
     const plan = planByPersonId.get(person.id);
     if (!plan) return [];
-    const fn = plan.functionId ? functionsById.get(plan.functionId) : undefined;
+    const fnId = functionByPersonId.get(person.id);
+    const fn = fnId ? functionsById.get(fnId) : undefined;
     if (!fn) return [];
 
     return Array.from({ length: 7 }, (_, dayIndex) => {

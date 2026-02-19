@@ -7,7 +7,8 @@ export const buildRoleMap = (roles: Role[]) => new Map(roles.map((role) => [role
 export const getShiftFunction = (shift: Shift, peopleById: Map<string, Person>, functionsById: Map<string, Function>) => {
   const person = peopleById.get(shift.personId);
   if (!person) return undefined;
-  return functionsById.get(person.functionId);
+  const firstRoleFunction = Array.from(functionsById.values()).find((fn) => fn.roleId === person.roleId);
+  return firstRoleFunction;
 };
 
 export const getShiftRole = (
