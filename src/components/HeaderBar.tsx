@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Target } from '../lib/icons';
+import { ChevronLeft, ChevronRight, Target } from 'lucide-react';
 
 type ViewMode = 'week' | 'schedules' | 'personal';
 
@@ -38,7 +38,7 @@ export const HeaderBar = ({
       </div>
     </div>
 
-    {view === 'week' ? (
+    {view === 'week' || view === 'schedules' ? (
       <div className="week-controls">
         <button
           className={`icon-btn current-week-icon ${isCurrentWeek ? 'active' : ''}`}

@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
-import { addDays, startOfWeekMonday } from '../../lib/dateUtils';
 import { DAY_KEYS, isValidSlot, toISODate } from '../../lib/scheduleUtils';
 import { PeopleList } from './PeopleList';
 import { PersonScheduleEditor } from './PersonScheduleEditor';
 import { TemplateModal } from './TemplateModal';
-
-const todayWeekStart = startOfWeekMonday(new Date());
 
 type Props = {
   people: Person[];
@@ -15,13 +12,13 @@ type Props = {
   personWeekPlans: PersonWeekPlan[];
   personFunctionWeeks: PersonFunctionWeek[];
   overrides: ScheduleOverride[];
+  weekStart: Date;
   onChange: (next: { templates: ScheduleTemplate[]; personWeekPlans: PersonWeekPlan[]; personFunctionWeeks: PersonFunctionWeek[]; overrides: ScheduleOverride[] }) => void;
 };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-export const SchedulesPage = ({ people, functions, templates, personWeekPlans, personFunctionWeeks, overrides, onChange }: Props) => {
-  const [weekStart, setWeekStart] = useState(todayWeekStart);
+export const SchedulesPage = ({ people, functions, templates, personWeekPlans, personFunctionWeeks, overrides, weekStart, onChange }: Props) => {
   const [search, setSearch] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(people[0]?.id ?? null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -118,12 +115,8 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
         functionWeek={selectedFunctionWeek}
         overrides={draftOverrides}
         weekStart={weekStart}
-        isCurrentWeek={weekStart.getTime() === todayWeekStart.getTime()}
         hasUnsavedChanges={hasUnsavedChanges}
         hasInvalidSlots={hasInvalidSlots}
-        onPrevWeek={() => setWeekStart(addDays(weekStart, -7))}
-        onNextWeek={() => setWeekStart(addDays(weekStart, 7))}
-        onCurrentWeek={() => setWeekStart(todayWeekStart)}
         onTemplateChange={(templateId) => upsertWeekPlan({ templateId })}
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
         onOpenTemplateModal={() => setTemplateModalOpen(true)}
