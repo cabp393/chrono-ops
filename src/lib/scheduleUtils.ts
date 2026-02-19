@@ -43,8 +43,21 @@ export const formatDateCompact = (date: Date) => toISODate(date);
 
 export const isOvernight = (slot: ScheduleDaySlot) => !!slot.start && !!slot.end && slot.end < slot.start;
 
+export const slotValidationError = (slot: ScheduleDaySlot) => {
+  const hasStart = !!slot.start;
+  const hasEnd = !!slot.end;
+  if (!hasStart && !hasEnd) return null;
+  if (hasStart !== hasEnd) return 'Define hora de inicio y término.';
+  if (slot.start === slot.end) return 'Inicio y término no pueden ser iguales.';
+  return null;
+};
+
+export const isValidSlot = (slot: ScheduleDaySlot) => slotValidationError(slot) === null;
+
 export const formatSlot = (slot: ScheduleDaySlot) => {
-  if (!slot.start || !slot.end) return 'Libre';
+  if (!slot.start && !slot.end) return 'Libre';
+  const error = slotValidationError(slot);
+  if (error) return error;
   return `${slot.start}–${slot.end}${isOvernight(slot) ? ' (+1)' : ''}`;
 };
 

@@ -283,6 +283,12 @@ select, input {
   box-shadow: 0 -6px 14px rgba(15, 23, 42, 0.08);
   z-index: 2;
 }
+.search-picker-slot { display: grid; gap: 6px; }
+.search-picker-grid {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+}
 .filters-footer-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

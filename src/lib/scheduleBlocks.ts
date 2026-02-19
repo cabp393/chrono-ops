@@ -1,5 +1,5 @@
 import { addDays } from './dateUtils';
-import { resolveSchedule, toISODate } from './scheduleUtils';
+import { isValidSlot, resolveSchedule, toISODate } from './scheduleUtils';
 import type { Function, Person, PersonWeekPlan, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
 
 const buildLocalIso = (dateISO: string, timeHHMM: string) => `${dateISO}T${timeHHMM}:00`;
@@ -36,7 +36,7 @@ export const buildWeekScheduleBlocks = (
       const template = plan.templateId ? templatesById.get(plan.templateId) : undefined;
       const { slot } = resolveSchedule(person.id, dateISO, template, overrides);
 
-      if (!slot.start || !slot.end) return null;
+      if (!isValidSlot(slot) || !slot.start || !slot.end) return null;
 
       const endISODate = endDateISO(dateISO, slot.start, slot.end);
       const labelText = shiftLabelMode === 'person' ? person.nombre : fn.nombre;

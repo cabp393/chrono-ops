@@ -15,8 +15,23 @@ export const addDays = (date: Date, days: number) => {
 export const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-export const formatHour = (date: Date) =>
-  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+export const formatTime24 = (date: Date) => {
+  const pad = (n: number) => `${n}`.padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+export const parseHHmm = (value: string) => {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+  return { h: hours, m: minutes };
+};
+
+export const formatHour = (date: Date) => formatTime24(date);
 
 export const formatWeekRange = (weekStart: Date) => {
   const end = addDays(weekStart, 6);

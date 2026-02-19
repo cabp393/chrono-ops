@@ -12,6 +12,7 @@ type Props = {
   weekStart: Date;
   isCurrentWeek: boolean;
   hasUnsavedChanges: boolean;
+  hasInvalidSlots: boolean;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onCurrentWeek: () => void;
@@ -33,6 +34,7 @@ export const PersonScheduleEditor = ({
   weekStart,
   isCurrentWeek,
   hasUnsavedChanges,
+  hasInvalidSlots,
   onPrevWeek,
   onNextWeek,
   onCurrentWeek,
@@ -95,8 +97,9 @@ export const PersonScheduleEditor = ({
       <footer className="filters-footer schedule-footer">
         <div className="filters-footer-actions">
           <button className="footer-reset" onClick={onReset}>Reiniciar</button>
-          <button className="primary footer-apply" onClick={onSave}>Guardar cambios</button>
+          <button className="primary footer-apply" disabled={hasInvalidSlots} onClick={onSave}>Guardar cambios</button>
         </div>
+        {hasInvalidSlots ? <span className="error">Corrige horarios inválidos antes de guardar.</span> : null}
         {hasUnsavedChanges ? <span className="pending-badge">Cambios sin guardar</span> : null}
       </footer>
     </section>

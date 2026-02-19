@@ -74,6 +74,15 @@ export const FiltersPanel = ({
       });
   }, [isSearchMode, people, draftSearch]);
 
+  useEffect(() => {
+    if (!isSearchMode) {
+      setDraftState((prev) => prev.selectedPersonId === null ? prev : { ...prev, selectedPersonId: null });
+      return;
+    }
+    const firstMatchId = peoplePickerItems[0]?.id ?? null;
+    setDraftState((prev) => prev.selectedPersonId === firstMatchId ? prev : { ...prev, selectedPersonId: firstMatchId });
+  }, [isSearchMode, peoplePickerItems]);
+
   const roleCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     peopleMatchingSearch.forEach((person) => {
@@ -137,32 +146,7 @@ export const FiltersPanel = ({
         </div>
 
         <div className="filters-scroll">
-          {isSearchMode ? (
-            <FilterSection title="Trabajadores">
-              <div className="pill-grid">
-                {peoplePickerItems.map((person) => {
-                  const roleColor = rolesById.get(functionsById.get(person.functionId)?.roleId ?? '')?.color;
-                  const selected = draftState.selectedPersonId === person.id;
-                  return (
-                    <button
-                      key={person.id}
-                      type="button"
-                      className={`filter-pill ${selected ? 'active' : ''}`}
-                      onClick={() => setDraftState((prev) => ({
-                        ...prev,
-                        selectedPersonId: prev.selectedPersonId === person.id ? null : person.id
-                      }))}
-                      style={roleColor ? ({ '--pill-color': roleColor } as CSSProperties) : undefined}
-                    >
-                      {roleColor ? <span className="pill-dot" style={{ background: roleColor }} /> : null}
-                      <span>{person.nombre}</span>
-                    </button>
-                  );
-                })}
-                {peoplePickerItems.length === 0 ? <p className="empty-state">Sin resultados por nombre.</p> : null}
-              </div>
-            </FilterSection>
-          ) : (
+          {isSearchMode ? null : (
             <>
               <FilterSection title="Opciones de visualización">
                 <div className="sub-control">
@@ -254,7 +238,28 @@ export const FiltersPanel = ({
         <FilterFooter
           searchText={draftState.searchText}
           onSearchChange={(value) => setDraftState((prev) => ({ ...prev, searchText: value }))}
-          onSearchClear={() => setDraftState((prev) => ({ ...prev, searchText: '' }))}
+          onSearchClear={() => setDraftState((prev) => ({ ...prev, searchText: '', selectedPersonId: null }))}
+          searchPicker={isSearchMode ? (
+            <div className="search-picker-grid pill-grid">
+              {peoplePickerItems.map((person) => {
+                const roleColor = rolesById.get(functionsById.get(person.functionId)?.roleId ?? '')?.color;
+                const selected = draftState.selectedPersonId === person.id;
+                return (
+                  <button
+                    key={person.id}
+                    type="button"
+                    className={`filter-pill ${selected ? 'active' : ''}`}
+                    onClick={() => setDraftState((prev) => ({ ...prev, selectedPersonId: person.id }))}
+                    style={roleColor ? ({ '--pill-color': roleColor } as CSSProperties) : undefined}
+                  >
+                    {roleColor ? <span className="pill-dot" style={{ background: roleColor }} /> : null}
+                    <span>{person.nombre}</span>
+                  </button>
+                );
+              })}
+              {peoplePickerItems.length === 0 ? <p className="empty-state">Sin resultados por nombre.</p> : null}
+            </div>
+          ) : null}
           disabledApply={!hasUnsavedChanges}
           onApply={() => {
             onApply(draftState);
