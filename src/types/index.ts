@@ -13,7 +13,8 @@ export type Function = {
 export type Person = {
   id: string;
   nombre: string;
-  functionId: string;
+  roleId: string;
+  functionId?: string;
 };
 
 export type Shift = {
@@ -85,6 +86,11 @@ export type PersonWeekPlan = {
   personId: string;
   weekStartISO: string;
   templateId: string | null;
+};
+
+export type PersonFunctionWeek = {
+  personId: string;
+  weekStartISO: string;
   functionId: string | null;
 };
 

@@ -1,6 +1,6 @@
 import { formatWeekRange } from '../../lib/dateUtils';
 import { ChevronLeft, ChevronRight, Target } from '../../lib/icons';
-import type { Function, Person, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
+import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { WeekScheduleTable } from './WeekScheduleTable';
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
   functions: Function[];
   templates: ScheduleTemplate[];
   weekPlan: PersonWeekPlan | undefined;
+  functionWeek: PersonFunctionWeek | undefined;
   overrides: ScheduleOverride[];
   weekStart: Date;
   isCurrentWeek: boolean;
@@ -25,32 +26,11 @@ type Props = {
   onSave: () => void;
 };
 
-export const PersonScheduleEditor = ({
-  person,
-  functions,
-  templates,
-  weekPlan,
-  overrides,
-  weekStart,
-  isCurrentWeek,
-  hasUnsavedChanges,
-  hasInvalidSlots,
-  onPrevWeek,
-  onNextWeek,
-  onCurrentWeek,
-  onTemplateChange,
-  onFunctionChange,
-  onOpenTemplateModal,
-  onUpsertOverride,
-  onRevertOverride,
-  onReset,
-  onSave
-}: Props) => {
-  if (!person) {
-    return <section className="card"><p>Selecciona una persona para editar horarios.</p></section>;
-  }
+export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, isCurrentWeek, hasUnsavedChanges, hasInvalidSlots, onPrevWeek, onNextWeek, onCurrentWeek, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onRevertOverride, onReset, onSave }: Props) => {
+  if (!person) return <section className="card"><p>Selecciona una persona para editar horarios.</p></section>;
 
-  const selectedFunction = functions.find((item) => item.id === weekPlan?.functionId);
+  const roleFunctions = functions.filter((item) => item.roleId === person.roleId);
+  const selectedFunction = roleFunctions.find((item) => item.id === functionWeek?.functionId);
   const selectedTemplate = templates.find((item) => item.id === weekPlan?.templateId);
 
   return (
@@ -72,10 +52,11 @@ export const PersonScheduleEditor = ({
         <h3>Asignación semanal</h3>
         {!weekPlan ? <p className="empty-state">Semana sin asignación. Selecciona función y plantilla, luego guarda cambios.</p> : null}
         <div className="template-assignment-row">
-          <select value={weekPlan?.functionId ?? ''} onChange={(event) => onFunctionChange(event.target.value || null)}>
+          <select value={functionWeek?.functionId ?? ''} onChange={(event) => onFunctionChange(event.target.value || null)}>
             <option value="">Sin función</option>
-            {functions.map((item) => <option value={item.id} key={item.id}>{item.nombre}</option>)}
+            {roleFunctions.map((item) => <option value={item.id} key={item.id}>{item.nombre}</option>)}
           </select>
+          {roleFunctions.length === 0 ? <p className="empty-state">No hay funciones para este rol. Créelas en la pestaña Personal.</p> : null}
           <select value={weekPlan?.templateId ?? ''} onChange={(event) => onTemplateChange(event.target.value || null)}>
             <option value="">Sin plantilla</option>
             {templates.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
@@ -84,15 +65,7 @@ export const PersonScheduleEditor = ({
         </div>
       </section>
 
-      <WeekScheduleTable
-        personId={person.id}
-        weekStart={weekStart}
-        template={selectedTemplate}
-        overrides={overrides}
-        weekAssigned={!!weekPlan}
-        onUpsertOverride={onUpsertOverride}
-        onRevertOverride={onRevertOverride}
-      />
+      <WeekScheduleTable personId={person.id} weekStart={weekStart} template={selectedTemplate} overrides={overrides} weekAssigned={!!weekPlan} onUpsertOverride={onUpsertOverride} onRevertOverride={onRevertOverride} />
 
       <footer className="filters-footer schedule-footer">
         <div className="filters-footer-actions">

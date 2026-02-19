@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Function, Person, PersonWeekPlan, ScheduleOverride } from '../../types';
+import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { addDays, startOfWeekMonday } from '../../lib/dateUtils';
 import { DAY_KEYS, isValidSlot, toISODate } from '../../lib/scheduleUtils';
-import type { ScheduleData } from '../../lib/scheduleStorage';
 import { PeopleList } from './PeopleList';
 import { PersonScheduleEditor } from './PersonScheduleEditor';
 import { TemplateModal } from './TemplateModal';
@@ -12,31 +11,34 @@ const todayWeekStart = startOfWeekMonday(new Date());
 type Props = {
   people: Person[];
   functions: Function[];
-  scheduleData: ScheduleData;
-  onScheduleDataChange: (next: ScheduleData) => void;
+  templates: ScheduleTemplate[];
+  personWeekPlans: PersonWeekPlan[];
+  personFunctionWeeks: PersonFunctionWeek[];
+  overrides: ScheduleOverride[];
+  onChange: (next: { templates: ScheduleTemplate[]; personWeekPlans: PersonWeekPlan[]; personFunctionWeeks: PersonFunctionWeek[]; overrides: ScheduleOverride[] }) => void;
 };
 
-const samePlans = (a: PersonWeekPlan[], b: PersonWeekPlan[]) => JSON.stringify(a) === JSON.stringify(b);
-const sameOverrides = (a: ScheduleOverride[], b: ScheduleOverride[]) => JSON.stringify(a) === JSON.stringify(b);
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataChange }: Props) => {
+export const SchedulesPage = ({ people, functions, templates, personWeekPlans, personFunctionWeeks, overrides, onChange }: Props) => {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [search, setSearch] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(people[0]?.id ?? null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
-  const [draftWeekPlans, setDraftWeekPlans] = useState<PersonWeekPlan[]>(scheduleData.personWeekPlans);
-  const [draftOverrides, setDraftOverrides] = useState<ScheduleOverride[]>(scheduleData.overrides);
+  const [draftWeekPlans, setDraftWeekPlans] = useState<PersonWeekPlan[]>(personWeekPlans);
+  const [draftFunctionWeeks, setDraftFunctionWeeks] = useState<PersonFunctionWeek[]>(personFunctionWeeks);
+  const [draftOverrides, setDraftOverrides] = useState<ScheduleOverride[]>(overrides);
 
   useEffect(() => {
-    setDraftWeekPlans(scheduleData.personWeekPlans);
-    setDraftOverrides(scheduleData.overrides);
-  }, [scheduleData.personWeekPlans, scheduleData.overrides]);
+    setDraftWeekPlans(personWeekPlans);
+    setDraftFunctionWeeks(personFunctionWeeks);
+    setDraftOverrides(overrides);
+  }, [personWeekPlans, personFunctionWeeks, overrides]);
 
-  const hasUnsavedChanges = !samePlans(scheduleData.personWeekPlans, draftWeekPlans)
-    || !sameOverrides(scheduleData.overrides, draftOverrides);
+  const hasUnsavedChanges = !same(personWeekPlans, draftWeekPlans) || !same(personFunctionWeeks, draftFunctionWeeks) || !same(overrides, draftOverrides);
   const hasInvalidOverrides = draftOverrides.some((item) => !isValidSlot({ start: item.start, end: item.end }));
-  const hasInvalidTemplates = scheduleData.templates.some((template) => DAY_KEYS.some((dayKey) => !isValidSlot(template.days[dayKey])));
+  const hasInvalidTemplates = templates.some((template) => DAY_KEYS.some((dayKey) => !isValidSlot(template.days[dayKey])));
   const hasInvalidSlots = hasInvalidOverrides || hasInvalidTemplates;
 
   const weekStartISO = toISODate(weekStart);
@@ -45,66 +47,51 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
     () => draftWeekPlans.find((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO),
     [draftWeekPlans, selectedPersonId, weekStartISO]
   );
+  const selectedFunctionWeek = useMemo(
+    () => draftFunctionWeeks.find((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO),
+    [draftFunctionWeeks, selectedPersonId, weekStartISO]
+  );
 
   const selectPerson = (personId: string) => {
     if (selectedPersonId !== personId && hasUnsavedChanges) {
-      setDraftWeekPlans(scheduleData.personWeekPlans);
-      setDraftOverrides(scheduleData.overrides);
+      setDraftWeekPlans(personWeekPlans);
+      setDraftFunctionWeeks(personFunctionWeeks);
+      setDraftOverrides(overrides);
     }
     setSelectedPersonId(personId);
   };
 
   const upsertWeekPlan = (next: { templateId?: string | null; functionId?: string | null }) => {
     if (!selectedPersonId) return;
-    setDraftWeekPlans((prev) => {
-      const current = prev.find((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO);
-      if (!current) {
-        return [...prev, {
-          personId: selectedPersonId,
-          weekStartISO,
-          templateId: next.templateId ?? null,
-          functionId: next.functionId ?? null
-        }];
-      }
-      return prev.map((item) => {
-        if (item.personId !== selectedPersonId || item.weekStartISO !== weekStartISO) return item;
-        return {
-          ...item,
-          templateId: next.templateId === undefined ? item.templateId : next.templateId,
-          functionId: next.functionId === undefined ? item.functionId : next.functionId
-        };
+    if (next.templateId !== undefined) {
+      setDraftWeekPlans((prev) => {
+        const current = prev.find((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO);
+        if (!current) return [...prev, { personId: selectedPersonId, weekStartISO, templateId: next.templateId ?? null }];
+        return prev.map((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO ? { ...item, templateId: next.templateId ?? null } : item);
       });
-    });
+    }
+    if (next.functionId !== undefined) {
+      setDraftFunctionWeeks((prev) => {
+        const current = prev.find((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO);
+        if (!current) return [...prev, { personId: selectedPersonId, weekStartISO, functionId: next.functionId ?? null }];
+        return prev.map((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO ? { ...item, functionId: next.functionId ?? null } : item);
+      });
+    }
   };
 
   const upsertOverride = (dateISO: string, start: string | null, end: string | null) => {
     if (!selectedPersonId || !selectedWeekPlan) return;
     setDraftOverrides((prev) => {
       const existing = prev.find((item) => item.personId === selectedPersonId && item.dateISO === dateISO);
-      if (existing) {
-        return prev.map((item) => item.id === existing.id ? { ...item, start, end } : item);
-      }
+      if (existing) return prev.map((item) => item.id === existing.id ? { ...item, start, end } : item);
       return [...prev, { id: crypto.randomUUID(), personId: selectedPersonId, dateISO, start, end }];
     });
   };
 
-  const revertOverride = (dateISO: string) => {
-    if (!selectedPersonId) return;
-    setDraftOverrides((prev) => prev.filter((item) => !(item.personId === selectedPersonId && item.dateISO === dateISO)));
-  };
-
   const resetDraft = () => {
-    setDraftWeekPlans(scheduleData.personWeekPlans);
-    setDraftOverrides(scheduleData.overrides);
-  };
-
-  const saveDraft = () => {
-    if (hasInvalidSlots) return;
-    onScheduleDataChange({
-      templates: scheduleData.templates,
-      personWeekPlans: draftWeekPlans,
-      overrides: draftOverrides
-    });
+    setDraftWeekPlans(personWeekPlans);
+    setDraftFunctionWeeks(personFunctionWeeks);
+    setDraftOverrides(overrides);
   };
 
   return (
@@ -112,8 +99,9 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
       <PeopleList
         people={people}
         functions={functions}
-        templates={scheduleData.templates}
+        templates={templates}
         personWeekPlans={draftWeekPlans}
+        personFunctionWeeks={draftFunctionWeeks}
         overrides={draftOverrides}
         weekStart={weekStart}
         selectedPersonId={selectedPersonId}
@@ -125,8 +113,9 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
       <PersonScheduleEditor
         person={selectedPerson}
         functions={functions}
-        templates={scheduleData.templates}
+        templates={templates}
         weekPlan={selectedWeekPlan}
+        functionWeek={selectedFunctionWeek}
         overrides={draftOverrides}
         weekStart={weekStart}
         isCurrentWeek={weekStart.getTime() === todayWeekStart.getTime()}
@@ -139,23 +128,19 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
         onOpenTemplateModal={() => setTemplateModalOpen(true)}
         onUpsertOverride={upsertOverride}
-        onRevertOverride={revertOverride}
+        onRevertOverride={(dateISO) => setDraftOverrides((prev) => prev.filter((item) => !(item.personId === selectedPersonId && item.dateISO === dateISO)))}
         onReset={resetDraft}
-        onSave={saveDraft}
+        onSave={() => !hasInvalidSlots && onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides })}
       />
 
       <TemplateModal
         open={templateModalOpen}
-        templates={scheduleData.templates}
+        templates={templates}
         onClose={() => setTemplateModalOpen(false)}
-        onSave={(templates) => {
-          const sanitize = (rows: PersonWeekPlan[]) => rows.map((item) => templates.some((tpl) => tpl.id === item.templateId)
-            ? item
-            : { ...item, templateId: null });
-          const nextSavedPlans = sanitize(scheduleData.personWeekPlans);
-          const nextDraftPlans = sanitize(draftWeekPlans);
-          setDraftWeekPlans(nextDraftPlans);
-          onScheduleDataChange({ templates, personWeekPlans: nextSavedPlans, overrides: scheduleData.overrides });
+        onSave={(nextTemplates) => {
+          const sanitize = (rows: PersonWeekPlan[]) => rows.map((item) => nextTemplates.some((tpl) => tpl.id === item.templateId) ? item : { ...item, templateId: null });
+          onChange({ templates: nextTemplates, personWeekPlans: sanitize(personWeekPlans), personFunctionWeeks, overrides });
+          setDraftWeekPlans(sanitize(draftWeekPlans));
         }}
       />
     </main>

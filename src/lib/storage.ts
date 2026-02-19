@@ -1,34 +1,57 @@
-import type { AppliedViewState, AppData, Function, Person, Role, Shift, ShiftLabelMode } from '../types';
+import type {
+  AppliedViewState,
+  Function,
+  Person,
+  PersonFunctionWeek,
+  PersonWeekPlan,
+  Role,
+  ScheduleOverride,
+  ScheduleTemplate,
+  Shift,
+  ShiftLabelMode
+} from '../types';
 import { clampScale } from './timeScale';
 import type { TimeScale } from '../types';
+import { addDays, startOfWeekMonday } from './dateUtils';
+import { toISODate } from './scheduleUtils';
 
-const STORAGE_KEY = 'shiftboard:data:v2';
-const LEGACY_STORAGE_KEY = 'shiftboard:data:v1';
+const STORAGE_KEY = 'shiftboard:data:v3';
+const LEGACY_STORAGE_KEY = 'shiftboard:data:v2';
+const LEGACY_STORAGE_V1_KEY = 'shiftboard:data:v1';
 const VIEW_SCALE_KEY = 'shiftboard:view:timeScale';
 const SHIFT_LABEL_MODE_KEY = 'shiftboard:view:shiftLabelMode';
 const VIEW_STATE_KEY = 'shiftboard:view:state:v1';
+
+const TEMPLATES_KEY = 'shiftboard_templates';
+const PERSON_WEEK_PLANS_KEY = 'shiftboard_personWeekPlans';
+const PERSON_FUNCTION_WEEKS_KEY = 'shiftboard_personFunctionWeeks';
+const LEGACY_FUNCTION_WEEK_KEY = 'shiftboard_functionWeek';
+const OVERRIDES_KEY = 'shiftboard_overrides';
+
+export type AppState = {
+  roles: Role[];
+  functions: Function[];
+  people: Person[];
+  shifts: Shift[];
+  templates: ScheduleTemplate[];
+  personWeekPlans: PersonWeekPlan[];
+  personFunctionWeeks: PersonFunctionWeek[];
+  overrides: ScheduleOverride[];
+};
 
 type LegacyPerson = {
   id: string;
   nombre: string;
   rolId?: string;
+  roleId?: string;
   functionId?: string;
-};
-
-type LegacyShift = {
-  id: string;
-  personId: string;
-  rolId?: string;
-  startISO: string;
-  endISO: string;
-  etiqueta?: string;
 };
 
 type LegacyData = {
   roles: Role[];
   functions?: Function[];
   people: LegacyPerson[];
-  shifts: LegacyShift[];
+  shifts: Shift[];
 };
 
 const demoRoles: Role[] = [
@@ -47,15 +70,27 @@ const demoFunctions: Function[] = [
 ];
 
 const demoPeople: Person[] = [
-  { id: 'p1', nombre: 'Ana Pérez', functionId: 'fn-picker' },
-  { id: 'p2', nombre: 'Luis Ríos', functionId: 'fn-picker-senior' },
-  { id: 'p3', nombre: 'Marta Díaz', functionId: 'fn-picker' },
-  { id: 'p4', nombre: 'Sergio Mora', functionId: 'fn-packing' },
-  { id: 'p5', nombre: 'Nora Vega', functionId: 'fn-packing-qa' },
-  { id: 'p6', nombre: 'Javier Sol', functionId: 'fn-packing' },
-  { id: 'p7', nombre: 'Carla Soto', functionId: 'fn-supervisor' },
-  { id: 'p8', nombre: 'Diego Paz', functionId: 'fn-lider-turno' }
+  { id: 'p1', nombre: 'Ana Pérez', roleId: 'picker' },
+  { id: 'p2', nombre: 'Luis Ríos', roleId: 'picker' },
+  { id: 'p3', nombre: 'Marta Díaz', roleId: 'picker' },
+  { id: 'p4', nombre: 'Sergio Mora', roleId: 'packing' },
+  { id: 'p5', nombre: 'Nora Vega', roleId: 'packing' },
+  { id: 'p6', nombre: 'Javier Sol', roleId: 'packing' },
+  { id: 'p7', nombre: 'Carla Soto', roleId: 'supervisor' },
+  { id: 'p8', nombre: 'Diego Paz', roleId: 'supervisor' }
 ];
+
+const createDemoTemplates = (): ScheduleTemplate[] => {
+  const make = (name: string, start: string | null, end: string | null): ScheduleTemplate => ({
+    id: crypto.randomUUID(),
+    name,
+    days: {
+      mon: { start, end }, tue: { start, end }, wed: { start, end }, thu: { start, end }, fri: { start, end },
+      sat: { start: null, end: null }, sun: { start: null, end: null }
+    }
+  });
+  return [make('Mañana', '06:00', '14:00'), make('Tarde', '14:00', '22:00'), make('Noche', '22:00', '06:00')];
+};
 
 const seedShifts = (baseMonday: Date): Shift[] => {
   const mk = (dayOffset: number, startH: number, startM: number, endH: number, endM: number, personId: string, etiqueta?: string) => {
@@ -68,119 +103,116 @@ const seedShifts = (baseMonday: Date): Shift[] => {
     if (end <= start) end.setDate(end.getDate() + 1);
     return { id: crypto.randomUUID(), personId, startISO: start.toISOString(), endISO: end.toISOString(), etiqueta };
   };
-
-  return [
-    mk(0, 6, 0, 14, 0, 'p1', 'Recepción'), mk(0, 8, 0, 16, 0, 'p2'), mk(0, 11, 30, 20, 0, 'p4'), mk(0, 9, 0, 18, 0, 'p7'),
-    mk(1, 6, 0, 14, 0, 'p3'), mk(1, 10, 0, 18, 0, 'p5'), mk(1, 12, 0, 20, 0, 'p6', 'Picos'), mk(1, 9, 0, 18, 0, 'p8'), mk(1, 22, 0, 6, 0, 'p2', 'Turno noche'),
-    mk(2, 7, 0, 15, 0, 'p1'), mk(2, 8, 0, 16, 0, 'p2'), mk(2, 14, 0, 22, 0, 'p4'), mk(2, 9, 0, 18, 0, 'p7'),
-    mk(3, 0, 30, 7, 0, 'p8', 'Nocturno'), mk(3, 0, 30, 7, 0, 'p4', 'Nocturno'), mk(3, 6, 0, 14, 0, 'p3'),
-    mk(4, 6, 0, 14, 0, 'p1'), mk(4, 12, 0, 20, 0, 'p6'), mk(4, 9, 0, 18, 0, 'p7'),
-    mk(5, 8, 0, 14, 0, 'p2'), mk(5, 9, 0, 17, 0, 'p4'), mk(5, 8, 0, 16, 0, 'p8'), mk(5, 8, 30, 16, 30, 'p3'),
-    mk(6, 8, 0, 13, 0, 'p3'), mk(6, 10, 0, 16, 0, 'p5')
-  ];
+  return [mk(0, 6, 0, 14, 0, 'p1'), mk(1, 6, 0, 14, 0, 'p2'), mk(2, 6, 0, 14, 0, 'p3')];
 };
 
-const createDemoData = (baseMonday: Date): AppData => ({
-  roles: demoRoles,
-  functions: demoFunctions,
-  people: demoPeople,
-  shifts: seedShifts(baseMonday)
-});
-
-const migrateLegacyData = (legacy: LegacyData): AppData => {
-  const roles = legacy.roles ?? [];
-
-  const existingFunctions = legacy.functions ?? [];
-  const roleToAutoFunction = new Map<string, string>();
-  const functions: Function[] = existingFunctions.length > 0
-    ? existingFunctions
-    : roles.map((role) => {
-      const id = `fn-${role.id}`;
-      roleToAutoFunction.set(role.id, id);
-      return { id, roleId: role.id, nombre: role.nombre };
-    });
-
-  if (existingFunctions.length > 0) {
-    roles.forEach((role) => {
-      const first = existingFunctions.find((fn) => fn.roleId === role.id);
-      if (first) roleToAutoFunction.set(role.id, first.id);
-    });
-  }
-
-  const people: Person[] = legacy.people.map((person) => {
-    const functionId = person.functionId
-      ?? (person.rolId ? roleToAutoFunction.get(person.rolId) : undefined)
-      ?? functions[0]?.id
-      ?? '';
-    return { id: person.id, nombre: person.nombre, functionId };
-  });
-
-  const peopleById = new Map(people.map((person) => [person.id, person]));
-
-  const shifts: Shift[] = legacy.shifts.map((shift) => {
-    const person = peopleById.get(shift.personId);
-    if (!person && shift.rolId && !roleToAutoFunction.has(shift.rolId)) {
-      const role = roles.find((item) => item.id === shift.rolId);
-      if (role) {
-        const autoFunctionId = `fn-${role.id}`;
-        roleToAutoFunction.set(role.id, autoFunctionId);
-        functions.push({ id: autoFunctionId, roleId: role.id, nombre: role.nombre });
-      }
-    }
-    return {
-      id: shift.id,
-      personId: shift.personId,
-      startISO: shift.startISO,
-      endISO: shift.endISO,
-      etiqueta: shift.etiqueta
-    };
-  });
-
-  return { roles, functions, people, shifts };
-};
-
-const parsePayload = (raw: string): AppData | null => {
-  try {
-    const parsed = JSON.parse(raw) as LegacyData;
-    if (!parsed || !Array.isArray(parsed.roles) || !Array.isArray(parsed.people) || !Array.isArray(parsed.shifts)) {
-      return null;
-    }
-    return migrateLegacyData(parsed);
-  } catch {
-    return null;
-  }
-};
-
-export const loadData = (baseMonday: Date): AppData => {
-  const current = localStorage.getItem(STORAGE_KEY);
-  if (current) {
-    const parsed = parsePayload(current);
-    if (parsed) return parsed;
-  }
-
-  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-  if (legacy) {
-    const migrated = parsePayload(legacy);
-    if (migrated) {
-      saveData(migrated);
-      localStorage.removeItem(LEGACY_STORAGE_KEY);
-      return migrated;
-    }
-  }
-
-  const seeded = createDemoData(baseMonday);
-  saveData(seeded);
-  return seeded;
-};
-
-export const saveData = (data: AppData) => {
-  const payload: AppData = {
-    roles: data.roles,
-    functions: data.functions,
-    people: data.people,
-    shifts: data.shifts.map(({ id, personId, startISO, endISO, etiqueta }) => ({ id, personId, startISO, endISO, etiqueta }))
+const createDemoData = (baseMonday: Date): AppState => {
+  const weekStartISO = toISODate(startOfWeekMonday(new Date()));
+  const templates = createDemoTemplates();
+  return {
+    roles: demoRoles,
+    functions: demoFunctions,
+    people: demoPeople,
+    shifts: seedShifts(baseMonday),
+    templates,
+    personWeekPlans: demoPeople.map((person, index) => ({
+      personId: person.id,
+      weekStartISO,
+      templateId: templates[index % 2].id
+    })),
+    personFunctionWeeks: demoPeople.map((person, index) => ({
+      personId: person.id,
+      weekStartISO,
+      functionId: demoFunctions.filter((fn) => fn.roleId === person.roleId)[index % 2]?.id ?? null
+    })),
+    overrides: []
   };
+};
+
+const parseJson = <T,>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
+};
+
+const inferRoleFromFunction = (functionId: string | undefined, functions: Function[]): string | null => {
+  if (!functionId) return null;
+  return functions.find((fn) => fn.id === functionId)?.roleId ?? null;
+};
+
+const normalizePeople = (people: LegacyPerson[], functions: Function[], roles: Role[]): Person[] => {
+  const fallbackRole = roles[0]?.id ?? '';
+  return people.map((person) => {
+    const derivedRole = person.roleId ?? person.rolId ?? inferRoleFromFunction(person.functionId, functions) ?? fallbackRole;
+    return { id: person.id, nombre: person.nombre, roleId: derivedRole, functionId: person.functionId };
+  });
+};
+
+const loadLegacyCore = (): { roles: Role[]; functions: Function[]; people: Person[]; shifts: Shift[] } | null => {
+  const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_V1_KEY);
+  const parsed = parseJson<LegacyData | null>(raw, null);
+  if (!parsed || !Array.isArray(parsed.roles) || !Array.isArray(parsed.people) || !Array.isArray(parsed.shifts)) return null;
+  const roles = parsed.roles;
+  const functions = parsed.functions && parsed.functions.length > 0
+    ? parsed.functions
+    : roles.map((role) => ({ id: `fn-${role.id}`, roleId: role.id, nombre: role.nombre }));
+  return { roles, functions, people: normalizePeople(parsed.people, functions, roles), shifts: parsed.shifts };
+};
+
+const loadPersonFunctionWeeks = (): PersonFunctionWeek[] => {
+  const direct = parseJson<PersonFunctionWeek[]>(localStorage.getItem(PERSON_FUNCTION_WEEKS_KEY), []);
+  if (direct.length > 0) return direct;
+
+  const fromPlans = parseJson<Array<PersonWeekPlan & { functionId?: string | null }>>(localStorage.getItem(PERSON_WEEK_PLANS_KEY), []);
+  const mapped = fromPlans
+    .filter((item) => typeof item.personId === 'string' && typeof item.weekStartISO === 'string' && 'functionId' in item)
+    .map((item) => ({ personId: item.personId, weekStartISO: item.weekStartISO, functionId: item.functionId ?? null }));
+  if (mapped.length > 0) return mapped;
+
+  const legacyRaw = parseJson<Record<string, string | null>>(localStorage.getItem(LEGACY_FUNCTION_WEEK_KEY), {});
+  const weekStartISO = toISODate(startOfWeekMonday(new Date()));
+  return Object.entries(legacyRaw).map(([personId, functionId]) => ({ personId, weekStartISO, functionId }));
+};
+
+export const loadAll = (baseMonday: Date): AppState => {
+  const core = loadLegacyCore();
+  if (!core) {
+    const demo = createDemoData(baseMonday);
+    saveAll(demo);
+    return demo;
+  }
+
+  const templates = parseJson<ScheduleTemplate[]>(localStorage.getItem(TEMPLATES_KEY), []);
+  const personWeekPlans = parseJson<PersonWeekPlan[]>(localStorage.getItem(PERSON_WEEK_PLANS_KEY), []).map((item) => ({
+    personId: item.personId,
+    weekStartISO: item.weekStartISO,
+    templateId: item.templateId ?? null
+  }));
+  const overrides = parseJson<ScheduleOverride[]>(localStorage.getItem(OVERRIDES_KEY), []);
+  const personFunctionWeeks = loadPersonFunctionWeeks();
+
+  const state = { ...core, templates, personWeekPlans, personFunctionWeeks, overrides };
+  saveAll(state);
+  return state;
+};
+
+export const saveAll = (partialOrAll: Partial<AppState>): AppState => {
+  const current = loadLegacyCore() ?? createDemoData(startOfWeekMonday(new Date()));
+  const currentState: AppState = {
+    ...current,
+    templates: parseJson(localStorage.getItem(TEMPLATES_KEY), []),
+    personWeekPlans: parseJson(localStorage.getItem(PERSON_WEEK_PLANS_KEY), []),
+    personFunctionWeeks: parseJson(localStorage.getItem(PERSON_FUNCTION_WEEKS_KEY), []),
+    overrides: parseJson(localStorage.getItem(OVERRIDES_KEY), [])
+  };
+  const next = { ...currentState, ...partialOrAll };
+
+  const payload = { roles: next.roles, functions: next.functions, people: next.people, shifts: next.shifts };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(next.templates));
+  localStorage.setItem(PERSON_WEEK_PLANS_KEY, JSON.stringify(next.personWeekPlans));
+  localStorage.setItem(PERSON_FUNCTION_WEEKS_KEY, JSON.stringify(next.personFunctionWeeks));
+  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(next.overrides));
+  return next;
 };
 
 export const loadTimeScalePreference = (): TimeScale => {
@@ -209,8 +241,8 @@ const normalizeViewState = (value: Partial<AppliedViewState> | null | undefined)
   timeScale: clampScale(Number(value?.timeScale ?? 60)),
   shiftLabelMode: value?.shiftLabelMode === 'person' ? 'person' : 'function',
   selectedPersonId: typeof value?.selectedPersonId === 'string' ? value.selectedPersonId : null,
-  roleIds: Array.isArray(value?.roleIds) ? value!.roleIds.filter((item): item is string => typeof item === 'string') : [],
-  functionIds: Array.isArray(value?.functionIds) ? value!.functionIds.filter((item): item is string => typeof item === 'string') : [],
+  roleIds: Array.isArray(value?.roleIds) ? value.roleIds.filter((item): item is string => typeof item === 'string') : [],
+  functionIds: Array.isArray(value?.functionIds) ? value.functionIds.filter((item): item is string => typeof item === 'string') : [],
   searchText: typeof value?.searchText === 'string' ? value.searchText : ''
 });
 
@@ -236,3 +268,27 @@ export const saveViewStatePreference = (state: AppliedViewState) => {
   saveTimeScalePreference(normalized.timeScale);
   saveShiftLabelModePreference(normalized.shiftLabelMode);
 };
+
+export const clearIncompatibleWeekFunction = (
+  rows: PersonFunctionWeek[],
+  personId: string,
+  weekStartISO: string,
+  validFunctionIds: Set<string>
+): PersonFunctionWeek[] => rows.map((row) => {
+  if (row.personId !== personId || row.weekStartISO !== weekStartISO) return row;
+  if (!row.functionId || validFunctionIds.has(row.functionId)) return row;
+  return { ...row, functionId: null };
+});
+
+export const weekStartISOFromDate = (date: Date) => toISODate(startOfWeekMonday(date));
+
+export const removePersonCascade = (state: AppState, personId: string): AppState => ({
+  ...state,
+  people: state.people.filter((person) => person.id !== personId),
+  shifts: state.shifts.filter((shift) => shift.personId !== personId),
+  personWeekPlans: state.personWeekPlans.filter((item) => item.personId !== personId),
+  personFunctionWeeks: state.personFunctionWeeks.filter((item) => item.personId !== personId),
+  overrides: state.overrides.filter((item) => item.personId !== personId)
+});
+
+export const weekDates = (weekStartISO: string) => Array.from({ length: 7 }, (_, day) => toISODate(addDays(new Date(`${weekStartISO}T00:00:00`), day)));

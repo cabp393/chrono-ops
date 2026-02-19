@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Target } from '../lib/icons';
 
-type ViewMode = 'week' | 'schedules';
+type ViewMode = 'week' | 'schedules' | 'personal';
 
 type Props = {
   weekLabel: string;
@@ -30,6 +30,7 @@ export const HeaderBar = ({
         <div className="segmented nav-tabs">
           <button className={view === 'week' ? 'active' : ''} onClick={() => onChangeView('week')}>Semana</button>
           <button className={view === 'schedules' ? 'active' : ''} onClick={() => onChangeView('schedules')}>Horarios</button>
+          <button className={view === 'personal' ? 'active' : ''} onClick={() => onChangeView('personal')}>Personal</button>
         </div>
       </div>
       <div className="header-actions">

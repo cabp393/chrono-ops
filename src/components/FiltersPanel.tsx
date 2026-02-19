@@ -48,7 +48,6 @@ export const FiltersPanel = ({
     return () => document.body.classList.remove('drawer-open');
   }, [open]);
 
-  const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
   const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
 
   const draftSearch = norm(draftState.searchText);
@@ -86,20 +85,20 @@ export const FiltersPanel = ({
   const roleCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     peopleMatchingSearch.forEach((person) => {
-      const fn = functionsById.get(person.functionId);
-      if (!fn) return;
-      counts[fn.roleId] = (counts[fn.roleId] || 0) + 1;
+      counts[person.roleId] = (counts[person.roleId] || 0) + 1;
     });
     return counts;
-  }, [peopleMatchingSearch, functionsById]);
+  }, [peopleMatchingSearch]);
 
   const functionCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     peopleMatchingSearch.forEach((person) => {
-      counts[person.functionId] = (counts[person.functionId] || 0) + 1;
+      functions.filter((fn) => fn.roleId === person.roleId).forEach((fn) => {
+        counts[fn.id] = (counts[fn.id] || 0) + 1;
+      });
     });
     return counts;
-  }, [peopleMatchingSearch]);
+  }, [peopleMatchingSearch, functions]);
 
   const groupedFunctions = useMemo(() => {
     const byRole: Record<string, Function[]> = {};
@@ -242,7 +241,7 @@ export const FiltersPanel = ({
           searchPicker={isSearchMode ? (
             <div className="search-picker-grid pill-grid">
               {peoplePickerItems.map((person) => {
-                const roleColor = rolesById.get(functionsById.get(person.functionId)?.roleId ?? '')?.color;
+                const roleColor = rolesById.get(person.roleId)?.color;
                 const selected = draftState.selectedPersonId === person.id;
                 return (
                   <button
