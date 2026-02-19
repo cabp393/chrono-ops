@@ -208,6 +208,7 @@ export const saveShiftLabelModePreference = (mode: ShiftLabelMode) => {
 const normalizeViewState = (value: Partial<AppliedViewState> | null | undefined): AppliedViewState => ({
   timeScale: clampScale(Number(value?.timeScale ?? 60)),
   shiftLabelMode: value?.shiftLabelMode === 'person' ? 'person' : 'function',
+  selectedPersonId: typeof value?.selectedPersonId === 'string' ? value.selectedPersonId : null,
   roleIds: Array.isArray(value?.roleIds) ? value!.roleIds.filter((item): item is string => typeof item === 'string') : [],
   functionIds: Array.isArray(value?.functionIds) ? value!.functionIds.filter((item): item is string => typeof item === 'string') : [],
   searchText: typeof value?.searchText === 'string' ? value.searchText : ''

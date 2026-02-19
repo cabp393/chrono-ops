@@ -17,6 +17,7 @@ const DEFAULT_VIEW_STATE: AppliedViewState = {
   timeScale: 60,
   shiftLabelMode: 'function',
   searchText: '',
+  selectedPersonId: null,
   roleIds: [],
   functionIds: []
 };
@@ -38,8 +39,9 @@ function App() {
       const fn = functionsById.get(person.functionId);
       const roleOk = appliedState.roleIds.length === 0 || (fn ? appliedState.roleIds.includes(fn.roleId) : false);
       const functionOk = appliedState.functionIds.length === 0 || appliedState.functionIds.includes(person.functionId);
-      const searchOk = !search || person.nombre.toLowerCase().includes(search) || (fn?.nombre.toLowerCase().includes(search) ?? false);
-      return roleOk && functionOk && searchOk;
+      const selectedPersonOk = !appliedState.selectedPersonId || person.id === appliedState.selectedPersonId;
+      const searchOk = !search || person.nombre.toLowerCase().includes(search);
+      return roleOk && functionOk && selectedPersonOk && searchOk;
     }).map((person) => person.id));
   }, [data.people, functionsById, appliedState]);
 
@@ -48,7 +50,7 @@ function App() {
     data.people,
     data.functions,
     schedulesState.templates,
-    schedulesState.personSchedules,
+    schedulesState.personWeekPlans,
     schedulesState.overrides,
     appliedState.shiftLabelMode
   ).filter((block) => filteredPersonIds.has(block.personId)), [
@@ -56,7 +58,7 @@ function App() {
     data.people,
     data.functions,
     schedulesState.templates,
-    schedulesState.personSchedules,
+    schedulesState.personWeekPlans,
     schedulesState.overrides,
     appliedState.shiftLabelMode,
     filteredPersonIds

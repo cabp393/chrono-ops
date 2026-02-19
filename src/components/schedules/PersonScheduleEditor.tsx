@@ -1,13 +1,13 @@
 import { formatWeekRange } from '../../lib/dateUtils';
 import { ChevronLeft, ChevronRight, Target } from '../../lib/icons';
-import type { Function, Person, PersonSchedule, ScheduleOverride, ScheduleTemplate } from '../../types';
+import type { Function, Person, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { WeekScheduleTable } from './WeekScheduleTable';
 
 type Props = {
   person: Person | undefined;
   functions: Function[];
   templates: ScheduleTemplate[];
-  personSchedules: PersonSchedule[];
+  weekPlan: PersonWeekPlan | undefined;
   overrides: ScheduleOverride[];
   weekStart: Date;
   isCurrentWeek: boolean;
@@ -16,6 +16,7 @@ type Props = {
   onNextWeek: () => void;
   onCurrentWeek: () => void;
   onTemplateChange: (templateId: string | null) => void;
+  onFunctionChange: (functionId: string | null) => void;
   onOpenTemplateModal: () => void;
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
   onRevertOverride: (dateISO: string) => void;
@@ -27,7 +28,7 @@ export const PersonScheduleEditor = ({
   person,
   functions,
   templates,
-  personSchedules,
+  weekPlan,
   overrides,
   weekStart,
   isCurrentWeek,
@@ -36,6 +37,7 @@ export const PersonScheduleEditor = ({
   onNextWeek,
   onCurrentWeek,
   onTemplateChange,
+  onFunctionChange,
   onOpenTemplateModal,
   onUpsertOverride,
   onRevertOverride,
@@ -46,16 +48,15 @@ export const PersonScheduleEditor = ({
     return <section className="card"><p>Selecciona una persona para editar horarios.</p></section>;
   }
 
-  const fn = functions.find((item) => item.id === person.functionId);
-  const assignment = personSchedules.find((item) => item.personId === person.id);
-  const template = templates.find((item) => item.id === assignment?.templateId);
+  const selectedFunction = functions.find((item) => item.id === weekPlan?.functionId);
+  const selectedTemplate = templates.find((item) => item.id === weekPlan?.templateId);
 
   return (
     <section className="schedule-editor-col">
       <header className="card schedule-editor-header">
         <div>
           <h3>{person.nombre}</h3>
-          <p>{fn?.nombre ?? 'Sin función'}</p>
+          <p>{selectedFunction?.nombre ?? 'Sin función asignada esta semana'}</p>
         </div>
         <div className="week-controls">
           <button className={`icon-btn current-week-icon ${isCurrentWeek ? 'active' : ''}`} onClick={onCurrentWeek} title="Semana actual"><Target size={15} /></button>
@@ -66,22 +67,27 @@ export const PersonScheduleEditor = ({
       </header>
 
       <section className="card template-assignment-card">
-        <h3>Plantilla asignada</h3>
+        <h3>Asignación semanal</h3>
+        {!weekPlan ? <p className="empty-state">Semana sin asignación. Selecciona función y plantilla, luego guarda cambios.</p> : null}
         <div className="template-assignment-row">
-          <select value={assignment?.templateId ?? ''} onChange={(event) => onTemplateChange(event.target.value || null)}>
+          <select value={weekPlan?.functionId ?? ''} onChange={(event) => onFunctionChange(event.target.value || null)}>
+            <option value="">Sin función</option>
+            {functions.map((item) => <option value={item.id} key={item.id}>{item.nombre}</option>)}
+          </select>
+          <select value={weekPlan?.templateId ?? ''} onChange={(event) => onTemplateChange(event.target.value || null)}>
             <option value="">Sin plantilla</option>
             {templates.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
           </select>
           <button onClick={onOpenTemplateModal}>Gestionar plantillas</button>
         </div>
-        <p>Actual: <strong>{template?.name ?? 'Sin plantilla'}</strong></p>
       </section>
 
       <WeekScheduleTable
         personId={person.id}
         weekStart={weekStart}
-        template={template}
+        template={selectedTemplate}
         overrides={overrides}
+        weekAssigned={!!weekPlan}
         onUpsertOverride={onUpsertOverride}
         onRevertOverride={onRevertOverride}
       />

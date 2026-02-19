@@ -52,6 +52,7 @@ export type CoverageBlock = {
 
 export type AppliedFilters = {
   searchText: string;
+  selectedPersonId: string | null;
   roleIds: string[];
   functionIds: string[];
 };
@@ -78,6 +79,13 @@ export type ScheduleTemplate = {
 export type PersonSchedule = {
   personId: string;
   templateId: string | null;
+};
+
+export type PersonWeekPlan = {
+  personId: string;
+  weekStartISO: string;
+  templateId: string | null;
+  functionId: string | null;
 };
 
 export type ScheduleOverride = {

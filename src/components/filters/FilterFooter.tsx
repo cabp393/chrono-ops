@@ -22,6 +22,8 @@ export const FilterFooter = ({
       value={searchText}
       onChange={onSearchChange}
       onClear={onSearchClear}
+      placeholder="Buscar trabajador…"
+      ariaLabel="Buscar trabajador"
     />
     <div className="filters-footer-actions">
       <button type="button" className="footer-reset" onClick={onReset}>Reiniciar</button>
