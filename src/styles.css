@@ -114,7 +114,7 @@ select, input {
   box-shadow: inset 0 0 0 1px #93c5fd;
 }
 
-.week-grid-card { overflow-y: auto; overflow-x: visible; max-height: calc(100vh - 220px); padding: 0; }
+.week-grid-card { overflow: auto; max-height: calc(100vh - 220px); padding: 0; touch-action: pan-x pan-y; }
 .week-grid-layout { display: grid; min-width: 1020px; position: relative; }
 .week-grid-layout > * { min-width: 0; }
 .sticky { position: sticky; top: 0; z-index: 8; background: #fff; }
