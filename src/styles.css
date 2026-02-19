@@ -393,6 +393,11 @@ body.drawer-open { overflow: hidden; }
   padding: 6px 10px;
   font-weight: 600;
 }
+.week-section-toggle svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
 .week-day-list { display: grid; gap: 4px; }
 .week-day-row.compact {
   border: 1px solid #e7edf7;

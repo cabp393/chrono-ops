@@ -21,7 +21,7 @@ export const WeekScheduleTable = ({ personId, weekStart, template, overrides, we
     <section className="card schedule-week-card">
       <button className="week-section-toggle" onClick={() => setExpanded((current) => !current)}>
         <span>Semana</span>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
 
       {expanded ? <div className="week-day-list">
