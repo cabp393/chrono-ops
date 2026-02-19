@@ -80,3 +80,21 @@ export const cloneTemplate = (template: ScheduleTemplate): ScheduleTemplate => (
     sun: { ...template.days.sun }
   }
 });
+
+
+export const resolvePersonFunctionIdForWeek = (
+  personId: string,
+  roleId: string,
+  weekStartISO: string,
+  functions: { id: string; roleId: string }[],
+  personFunctionWeeks: { personId: string; weekStartISO: string; functionId: string }[]
+) => {
+  const row = personFunctionWeeks.find((item) => item.personId === personId && item.weekStartISO === weekStartISO);
+  if (row) {
+    const fn = functions.find((item) => item.id === row.functionId);
+    if (fn?.roleId === roleId) return row.functionId;
+  }
+
+  const firstForRole = functions.find((item) => item.roleId === roleId);
+  return firstForRole?.id ?? null;
+};

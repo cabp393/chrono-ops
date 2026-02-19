@@ -1,6 +1,6 @@
 import { addDays } from './dateUtils';
-import { resolveSchedule, toISODate } from './scheduleUtils';
-import type { Function, Person, PersonSchedule, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
+import { resolvePersonFunctionIdForWeek, resolveSchedule, toISODate } from './scheduleUtils';
+import type { Function, Person, PersonFunctionWeek, PersonSchedule, ScheduleBlock, ScheduleOverride, ScheduleTemplate, ShiftLabelMode } from '../types';
 
 const buildLocalIso = (dateISO: string, timeHHMM: string) => `${dateISO}T${timeHHMM}:00`;
 
@@ -10,6 +10,7 @@ export const buildWeekScheduleBlocks = (
   weekStart: Date,
   people: Person[],
   functions: Function[],
+  personFunctionWeeks: PersonFunctionWeek[],
   templates: ScheduleTemplate[],
   personSchedules: PersonSchedule[],
   overrides: ScheduleOverride[],
@@ -18,9 +19,12 @@ export const buildWeekScheduleBlocks = (
   const functionsById = new Map(functions.map((fn) => [fn.id, fn]));
   const templatesById = new Map(templates.map((tpl) => [tpl.id, tpl]));
   const assignmentByPersonId = new Map(personSchedules.map((item) => [item.personId, item.templateId]));
+  const weekStartISO = toISODate(weekStart);
 
   return people.flatMap((person) => {
-    const fn = functionsById.get(person.functionId);
+    const functionId = resolvePersonFunctionIdForWeek(person.id, person.roleId, weekStartISO, functions, personFunctionWeeks);
+    if (!functionId) return [];
+    const fn = functionsById.get(functionId);
     if (!fn) return [];
 
     return Array.from({ length: 7 }, (_, dayIndex) => {
@@ -42,7 +46,7 @@ export const buildWeekScheduleBlocks = (
         startISO: buildLocalIso(dateISO, slot.start),
         endISO: buildLocalIso(endISODate, slot.end),
         labelText,
-        roleId: fn.roleId,
+        roleId: person.roleId,
         functionId: fn.id
       } satisfies ScheduleBlock;
     }).filter((item): item is ScheduleBlock => !!item);

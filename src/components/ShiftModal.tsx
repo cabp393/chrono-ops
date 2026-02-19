@@ -40,12 +40,12 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
 
   const selectedPerson = useMemo(() => people.find((p) => p.id === personId), [personId, people]);
   const selectedFunction = useMemo(
-    () => functions.find((fn) => fn.id === selectedPerson?.functionId),
-    [functions, selectedPerson?.functionId]
+    () => functions.find((fn) => fn.roleId === selectedPerson?.roleId),
+    [functions, selectedPerson?.roleId]
   );
   const selectedRole = useMemo(
-    () => roles.find((role) => role.id === selectedFunction?.roleId),
-    [roles, selectedFunction?.roleId]
+    () => roles.find((role) => role.id === selectedPerson?.roleId),
+    [roles, selectedPerson?.roleId]
   );
 
   const filteredPeople = useMemo(() => {

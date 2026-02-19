@@ -47,36 +47,29 @@ export const FiltersPanel = ({
     return () => document.body.classList.remove('drawer-open');
   }, [open]);
 
-  const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
-
   const draftSearch = norm(draftState.searchText);
   const roleScope = draftState.roleIds.length > 0 ? new Set(draftState.roleIds) : null;
 
   const peopleMatchingSearch = useMemo(() => {
     if (!draftSearch) return people;
-    return people.filter((person) => {
-      const fnName = functionsById.get(person.functionId)?.nombre ?? '';
-      return person.nombre.toLowerCase().includes(draftSearch) || fnName.toLowerCase().includes(draftSearch);
-    });
-  }, [draftSearch, people, functionsById]);
+    return people.filter((person) => person.nombre.toLowerCase().includes(draftSearch));
+  }, [draftSearch, people]);
 
   const roleCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     peopleMatchingSearch.forEach((person) => {
-      const fn = functionsById.get(person.functionId);
-      if (!fn) return;
-      counts[fn.roleId] = (counts[fn.roleId] || 0) + 1;
-    });
-    return counts;
-  }, [peopleMatchingSearch, functionsById]);
-
-  const functionCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    peopleMatchingSearch.forEach((person) => {
-      counts[person.functionId] = (counts[person.functionId] || 0) + 1;
+      counts[person.roleId] = (counts[person.roleId] || 0) + 1;
     });
     return counts;
   }, [peopleMatchingSearch]);
+
+  const functionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    functions.forEach((fn) => {
+      counts[fn.id] = roleCounts[fn.roleId] || 0;
+    });
+    return counts;
+  }, [functions, roleCounts]);
 
   const groupedFunctions = useMemo(() => {
     const byRole: Record<string, Function[]> = {};

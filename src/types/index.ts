@@ -13,6 +13,12 @@ export type Function = {
 export type Person = {
   id: string;
   nombre: string;
+  roleId: string;
+};
+
+export type PersonFunctionWeek = {
+  personId: string;
+  weekStartISO: string;
   functionId: string;
 };
 
@@ -98,4 +104,20 @@ export type ScheduleBlock = {
   labelText: string;
   roleId: string;
   functionId: string;
+};
+
+export type ScheduleData = {
+  templates: ScheduleTemplate[];
+  personSchedules: PersonSchedule[];
+  overrides: ScheduleOverride[];
+};
+
+export type StorageData = {
+  roles: Role[];
+  functions: Function[];
+  people: Person[];
+  personFunctionWeeks: PersonFunctionWeek[];
+  templates: ScheduleTemplate[];
+  personSchedules: PersonSchedule[];
+  overrides: ScheduleOverride[];
 };

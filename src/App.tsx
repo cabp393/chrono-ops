@@ -6,10 +6,10 @@ import { WeekGrid } from './components/WeekGrid';
 import { SchedulesPage } from './components/schedules/SchedulesPage';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
-import { buildFunctionMap } from './lib/relations';
 import { buildWeekScheduleBlocks } from './lib/scheduleBlocks';
-import { loadScheduleData, saveScheduleData } from './lib/scheduleStorage';
-import { loadData, loadViewStatePreference, saveViewStatePreference } from './lib/storage';
+import { loadAll, saveAll } from './lib/scheduleStorage';
+import { resolvePersonFunctionIdForWeek, toISODate } from './lib/scheduleUtils';
+import { loadViewStatePreference, saveViewStatePreference } from './lib/storage';
 import type { AppliedViewState } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
@@ -24,47 +24,49 @@ const DEFAULT_VIEW_STATE: AppliedViewState = {
 function App() {
   const [view, setView] = useState<'week' | 'schedules'>('week');
   const [weekStart, setWeekStart] = useState(todayWeekStart);
-  const [data] = useState(() => loadData(todayWeekStart));
-  const [schedulesState, setSchedulesState] = useState(() => loadScheduleData(data.people));
+  const [store, setStore] = useState(() => loadAll());
   const [appliedState, setAppliedState] = useState<AppliedViewState>(() => loadViewStatePreference());
   const [focusBlock, setFocusBlock] = useState<{ dayIndex: number; blockIndex: number } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const functionsById = useMemo(() => buildFunctionMap(data.functions), [data.functions]);
+  const weekStartISO = toISODate(weekStart);
 
   const filteredPersonIds = useMemo(() => {
     const search = appliedState.searchText.trim().toLowerCase();
-    return new Set(data.people.filter((person) => {
-      const fn = functionsById.get(person.functionId);
-      const roleOk = appliedState.roleIds.length === 0 || (fn ? appliedState.roleIds.includes(fn.roleId) : false);
-      const functionOk = appliedState.functionIds.length === 0 || appliedState.functionIds.includes(person.functionId);
+    return new Set(store.people.filter((person) => {
+      const functionId = resolvePersonFunctionIdForWeek(person.id, person.roleId, weekStartISO, store.functions, store.personFunctionWeeks);
+      const fn = functionId ? store.functions.find((item) => item.id === functionId) : null;
+      const roleOk = appliedState.roleIds.length === 0 || appliedState.roleIds.includes(person.roleId);
+      const functionOk = appliedState.functionIds.length === 0 || (functionId ? appliedState.functionIds.includes(functionId) : false);
       const searchOk = !search || person.nombre.toLowerCase().includes(search) || (fn?.nombre.toLowerCase().includes(search) ?? false);
       return roleOk && functionOk && searchOk;
     }).map((person) => person.id));
-  }, [data.people, functionsById, appliedState]);
+  }, [store.people, store.functions, store.personFunctionWeeks, weekStartISO, appliedState]);
 
   const weekScheduleBlocks = useMemo(() => buildWeekScheduleBlocks(
     weekStart,
-    data.people,
-    data.functions,
-    schedulesState.templates,
-    schedulesState.personSchedules,
-    schedulesState.overrides,
+    store.people,
+    store.functions,
+    store.personFunctionWeeks,
+    store.templates,
+    store.personSchedules,
+    store.overrides,
     appliedState.shiftLabelMode
   ).filter((block) => filteredPersonIds.has(block.personId)), [
     weekStart,
-    data.people,
-    data.functions,
-    schedulesState.templates,
-    schedulesState.personSchedules,
-    schedulesState.overrides,
+    store.people,
+    store.functions,
+    store.personFunctionWeeks,
+    store.templates,
+    store.personSchedules,
+    store.overrides,
     appliedState.shiftLabelMode,
     filteredPersonIds
   ]);
 
   const coverage = useMemo(
-    () => calculateCoverage(weekStart, weekScheduleBlocks, data.roles, appliedState.timeScale, (block) => block.roleId),
-    [weekStart, weekScheduleBlocks, data.roles, appliedState.timeScale]
+    () => calculateCoverage(weekStart, weekScheduleBlocks, store.roles, appliedState.timeScale, (block) => block.roleId),
+    [weekStart, weekScheduleBlocks, store.roles, appliedState.timeScale]
   );
 
   const activePeople = useMemo(
@@ -73,6 +75,11 @@ function App() {
   );
 
   const coverageTotals = Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]));
+
+  const updateStore = (next: typeof store) => {
+    setStore(next);
+    saveAll(next);
+  };
 
   return (
     <div className="app-shell">
@@ -91,8 +98,8 @@ function App() {
         <main className="dashboard-layout">
           <section className="main-column">
             <CoverageCard
-              roles={data.roles}
-              functions={data.functions}
+              roles={store.roles}
+              functions={store.functions}
               scheduleBlocks={weekScheduleBlocks}
               weekStart={weekStart}
               scale={appliedState.timeScale}
@@ -102,7 +109,7 @@ function App() {
             <WeekGrid
               weekStart={weekStart}
               blocks={weekScheduleBlocks}
-              roles={data.roles}
+              roles={store.roles}
               scale={appliedState.timeScale}
               coverageTotals={coverageTotals}
               focusBlock={focusBlock}
@@ -112,20 +119,15 @@ function App() {
         </main>
       ) : (
         <SchedulesPage
-          people={data.people}
-          functions={data.functions}
-          scheduleData={schedulesState}
-          onScheduleDataChange={(next) => {
-            setSchedulesState(next);
-            saveScheduleData(next);
-          }}
+          data={store}
+          onSaveAll={updateStore}
         />
       )}
 
       <FiltersPanel
-        roles={data.roles}
-        functions={data.functions}
-        people={data.people}
+        roles={store.roles}
+        functions={store.functions}
+        people={store.people}
         appliedState={appliedState}
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}

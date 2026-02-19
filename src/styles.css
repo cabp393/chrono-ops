@@ -366,6 +366,10 @@ body.drawer-open { overflow: hidden; }
 .person-item-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 .chip.warning { color: #9a3412; border-color: #fdba74; background: #fff7ed; }
 
+
+.accordion-toggle { width: 100%; display: flex; justify-content: space-between; align-items: center; background: transparent; border: 0; padding: 0; font: inherit; }
+.accordion-content { display: grid; gap: 8px; margin-top: 8px; }
+.accordion-content label { display: grid; gap: 4px; font-size: 12px; color: #475569; }
 .schedule-editor-col { display: grid; gap: 10px; }
 .schedule-editor-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .schedule-editor-header p { margin: 2px 0 0; color: #64748b; font-size: 12px; }
