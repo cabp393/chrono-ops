@@ -4,7 +4,7 @@ import type { Function, Person, PersonWeekPlan, ScheduleBlock, ScheduleOverride,
 
 const buildLocalIso = (dateISO: string, timeHHMM: string) => `${dateISO}T${timeHHMM}:00`;
 
-const endDateISO = (dateISO: string, start: string, end: string) => (end < start ? toISODate(addDays(new Date(`${dateISO}T00:00:00`), 1)) : dateISO);
+const startDateISO = (dateISO: string, start: string, end: string) => (end < start ? toISODate(addDays(new Date(`${dateISO}T00:00:00`), -1)) : dateISO);
 
 export const buildWeekScheduleBlocks = (
   weekStart: Date,
@@ -38,15 +38,15 @@ export const buildWeekScheduleBlocks = (
 
       if (!isValidSlot(slot) || !slot.start || !slot.end) return null;
 
-      const endISODate = endDateISO(dateISO, slot.start, slot.end);
+      const startISODate = startDateISO(dateISO, slot.start, slot.end);
       const labelText = shiftLabelMode === 'person' ? person.nombre : fn.nombre;
 
       return {
         id: `${person.id}_${dateISO}`,
         personId: person.id,
         dateISO,
-        startISO: buildLocalIso(dateISO, slot.start),
-        endISO: buildLocalIso(endISODate, slot.end),
+        startISO: buildLocalIso(startISODate, slot.start),
+        endISO: buildLocalIso(dateISO, slot.end),
         labelText,
         roleId: fn.roleId,
         functionId: fn.id
