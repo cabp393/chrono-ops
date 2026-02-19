@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { SearchInput } from './SearchInput';
 
 type Props = {
   searchText: string;
+  searchPicker?: ReactNode;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
   onReset: () => void;
@@ -11,6 +13,7 @@ type Props = {
 
 export const FilterFooter = ({
   searchText,
+  searchPicker,
   onSearchChange,
   onSearchClear,
   onReset,
@@ -18,6 +21,7 @@ export const FilterFooter = ({
   disabledApply = false
 }: Props) => (
   <div className="filters-footer">
+    {searchPicker ? <div className="search-picker-slot">{searchPicker}</div> : null}
     <SearchInput
       value={searchText}
       onChange={onSearchChange}

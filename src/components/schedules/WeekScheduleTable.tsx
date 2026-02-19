@@ -34,6 +34,7 @@ export const WeekScheduleTable = ({ personId, weekStart, template, overrides, we
               <div className="day-controls">
                 <input
                   type="time"
+                  step={60}
                   disabled={!weekAssigned}
                   value={override?.start ?? resolved.slot.start ?? ''}
                   onChange={(event) => {
@@ -43,6 +44,7 @@ export const WeekScheduleTable = ({ personId, weekStart, template, overrides, we
                 />
                 <input
                   type="time"
+                  step={60}
                   disabled={!weekAssigned}
                   value={override?.end ?? resolved.slot.end ?? ''}
                   onChange={(event) => {

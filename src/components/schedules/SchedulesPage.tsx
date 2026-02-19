@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Function, Person, PersonWeekPlan, ScheduleOverride } from '../../types';
 import { addDays, startOfWeekMonday } from '../../lib/dateUtils';
-import { toISODate } from '../../lib/scheduleUtils';
+import { DAY_KEYS, isValidSlot, toISODate } from '../../lib/scheduleUtils';
 import type { ScheduleData } from '../../lib/scheduleStorage';
 import { PeopleList } from './PeopleList';
 import { PersonScheduleEditor } from './PersonScheduleEditor';
@@ -35,6 +35,9 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
 
   const hasUnsavedChanges = !samePlans(scheduleData.personWeekPlans, draftWeekPlans)
     || !sameOverrides(scheduleData.overrides, draftOverrides);
+  const hasInvalidOverrides = draftOverrides.some((item) => !isValidSlot({ start: item.start, end: item.end }));
+  const hasInvalidTemplates = scheduleData.templates.some((template) => DAY_KEYS.some((dayKey) => !isValidSlot(template.days[dayKey])));
+  const hasInvalidSlots = hasInvalidOverrides || hasInvalidTemplates;
 
   const weekStartISO = toISODate(weekStart);
   const selectedPerson = people.find((item) => item.id === selectedPersonId);
@@ -96,6 +99,7 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
   };
 
   const saveDraft = () => {
+    if (hasInvalidSlots) return;
     onScheduleDataChange({
       templates: scheduleData.templates,
       personWeekPlans: draftWeekPlans,
@@ -127,6 +131,7 @@ export const SchedulesPage = ({ people, functions, scheduleData, onScheduleDataC
         weekStart={weekStart}
         isCurrentWeek={weekStart.getTime() === todayWeekStart.getTime()}
         hasUnsavedChanges={hasUnsavedChanges}
+        hasInvalidSlots={hasInvalidSlots}
         onPrevWeek={() => setWeekStart(addDays(weekStart, -7))}
         onNextWeek={() => setWeekStart(addDays(weekStart, 7))}
         onCurrentWeek={() => setWeekStart(todayWeekStart)}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DAY_KEYS, DAY_LABELS, cloneTemplate, createTemplate, formatSlot } from '../../lib/scheduleUtils';
+import { DAY_KEYS, DAY_LABELS, cloneTemplate, createTemplate, formatSlot, slotValidationError } from '../../lib/scheduleUtils';
 import type { ScheduleDaySlot, ScheduleTemplate } from '../../types';
 
 type Props = {
@@ -25,6 +25,8 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
   }, [open, templates]);
 
   if (!open) return null;
+
+  const hasInvalidSlots = draft.some((template) => DAY_KEYS.some((dayKey) => !!slotValidationError(template.days[dayKey])));
 
   const resetFromProps = () => {
     const next = clone(templates);
@@ -124,8 +126,8 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
                     return (
                       <div className="template-day-row" key={dayKey}>
                         <strong>{DAY_LABELS[dayKey]}</strong>
-                        <input type="time" value={slot.start ?? ''} onChange={(event) => setDaySlot(dayKey, { start: event.target.value || null, end: slot.end })} />
-                        <input type="time" value={slot.end ?? ''} onChange={(event) => setDaySlot(dayKey, { start: slot.start, end: event.target.value || null })} />
+                        <input type="time" step={60} value={slot.start ?? ''} onChange={(event) => setDaySlot(dayKey, { start: event.target.value || null, end: slot.end })} />
+                        <input type="time" step={60} value={slot.end ?? ''} onChange={(event) => setDaySlot(dayKey, { start: slot.start, end: event.target.value || null })} />
                         <button className="ghost" onClick={() => setDaySlot(dayKey, { start: null, end: null })}>Libre</button>
                         <span className="chip muted">{formatSlot(slot)}</span>
                       </div>
@@ -138,8 +140,9 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
         </div>
 
         <div className="modal-actions">
+          {hasInvalidSlots ? <p className="error">Corrige horas inválidas antes de guardar.</p> : null}
           <button className="ghost" onClick={() => { resetFromProps(); onClose(); }}>Cancelar</button>
-          <button className="primary" onClick={() => { onSave(draft); onClose(); }}>Guardar y cerrar</button>
+          <button className="primary" disabled={hasInvalidSlots} onClick={() => { onSave(draft); onClose(); }}>Guardar y cerrar</button>
         </div>
       </section>
     </div>
