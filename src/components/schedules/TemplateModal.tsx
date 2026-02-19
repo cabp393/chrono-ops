@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DAY_KEYS, DAY_LABELS, cloneTemplate, createTemplate, formatSlot, slotValidationError } from '../../lib/scheduleUtils';
 import type { ScheduleDaySlot, ScheduleTemplate } from '../../types';
+import { TimeInput24 } from '../TimeInput24';
 
 type Props = {
   open: boolean;
@@ -126,8 +127,8 @@ export const TemplateModal = ({ open, templates, onClose, onSave }: Props) => {
                     return (
                       <div className="template-day-row" key={dayKey}>
                         <strong>{DAY_LABELS[dayKey]}</strong>
-                        <input type="time" step={60} value={slot.start ?? ''} onChange={(event) => setDaySlot(dayKey, { start: event.target.value || null, end: slot.end })} />
-                        <input type="time" step={60} value={slot.end ?? ''} onChange={(event) => setDaySlot(dayKey, { start: slot.start, end: event.target.value || null })} />
+                        <TimeInput24 value={slot.start ?? ''} onChange={(value) => setDaySlot(dayKey, { start: value || null, end: slot.end })} step={60} />
+                        <TimeInput24 value={slot.end ?? ''} onChange={(value) => setDaySlot(dayKey, { start: slot.start, end: value || null })} step={60} />
                         <button className="ghost" onClick={() => setDaySlot(dayKey, { start: null, end: null })}>Libre</button>
                         <span className="chip muted">{formatSlot(slot)}</span>
                       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { toLocalDatetimeInput } from '../lib/dateUtils';
+import { fromLocalDateAndTime, toLocalDateInput, toLocalTimeInput } from '../lib/dateUtils';
 import type { Function, Person, Role, Shift } from '../types';
+import { TimeInput24 } from './TimeInput24';
 
 type Props = {
   open: boolean;
@@ -17,22 +18,28 @@ type Props = {
 export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people, functions, roles, defaultStart }: Props) => {
   const [personId, setPersonId] = useState('');
   const [personQuery, setPersonQuery] = useState('');
-  const [startISO, setStartISO] = useState('');
-  const [endISO, setEndISO] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!open) return;
     if (editing) {
       setPersonId(editing.personId);
-      setStartISO(toLocalDatetimeInput(editing.startISO));
-      setEndISO(toLocalDatetimeInput(editing.endISO));
+      setStartDate(toLocalDateInput(editing.startISO));
+      setStartTime(toLocalTimeInput(editing.startISO));
+      setEndDate(toLocalDateInput(editing.endISO));
+      setEndTime(toLocalTimeInput(editing.endISO));
     } else {
       const base = defaultStart ?? new Date();
       const end = new Date(base.getTime() + 4 * 60 * 60 * 1000);
       setPersonId(people[0]?.id ?? '');
-      setStartISO(toLocalDatetimeInput(base.toISOString()));
-      setEndISO(toLocalDatetimeInput(end.toISOString()));
+      setStartDate(toLocalDateInput(base.toISOString()));
+      setStartTime(toLocalTimeInput(base.toISOString()));
+      setEndDate(toLocalDateInput(end.toISOString()));
+      setEndTime(toLocalTimeInput(end.toISOString()));
     }
     setPersonQuery('');
     setError('');
@@ -57,8 +64,8 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
   if (!open) return null;
 
   const submit = () => {
-    const start = new Date(startISO);
-    const end = new Date(endISO);
+    const start = new Date(fromLocalDateAndTime(startDate, startTime));
+    const end = new Date(fromLocalDateAndTime(endDate, endTime));
     if (!(start < end)) {
       setError('La hora de fin debe ser mayor al inicio.');
       return;
@@ -92,10 +99,12 @@ export const ShiftModal = ({ open, onClose, onSave, onDuplicate, editing, people
           <span><strong>Rol:</strong> {selectedRole?.nombre ?? 'Sin rol'}</span>
         </div>
 
-        <label>Inicio<input type="datetime-local" value={startISO} onChange={(e) => { setStartISO(e.target.value); setError(''); }} /></label>
-        <label>Fin<input type="datetime-local" value={endISO} onChange={(e) => { setEndISO(e.target.value); setError(''); }} /></label>
+        <label>Fecha inicio<input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setError(''); }} /></label>
+        <label>Hora inicio<TimeInput24 value={startTime} onChange={(value) => { setStartTime(value); setError(''); }} step={60} /></label>
+        <label>Fecha fin<input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setError(''); }} /></label>
+        <label>Hora fin<TimeInput24 value={endTime} onChange={(value) => { setEndTime(value); setError(''); }} step={60} /></label>
         <div className="modal-actions">
-          {editing && onDuplicate && <button onClick={() => onDuplicate({ id: editing.id, personId, startISO: new Date(startISO).toISOString(), endISO: new Date(endISO).toISOString() }, 1)}>Duplicar +1 día</button>}
+          {editing && onDuplicate && <button onClick={() => onDuplicate({ id: editing.id, personId, startISO: new Date(fromLocalDateAndTime(startDate, startTime)).toISOString(), endISO: new Date(fromLocalDateAndTime(endDate, endTime)).toISOString() }, 1)}>Duplicar +1 día</button>}
           <button onClick={onClose}>Cancelar</button>
           <button className="primary" onClick={submit}>Guardar</button>
         </div>
