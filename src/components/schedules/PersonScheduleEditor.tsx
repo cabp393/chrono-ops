@@ -21,12 +21,11 @@ type Props = {
   onFunctionChange: (functionId: string | null) => void;
   onOpenTemplateModal: () => void;
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
-  onRevertOverride: (dateISO: string) => void;
   onReset: () => void;
   onSave: () => void;
 };
 
-export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, isCurrentWeek, hasUnsavedChanges, hasInvalidSlots, onPrevWeek, onNextWeek, onCurrentWeek, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onRevertOverride, onReset, onSave }: Props) => {
+export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, isCurrentWeek, hasUnsavedChanges, hasInvalidSlots, onPrevWeek, onNextWeek, onCurrentWeek, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onReset, onSave }: Props) => {
   if (!person) return <section className="card"><p>Selecciona una persona para editar horarios.</p></section>;
 
   const roleFunctions = functions.filter((item) => item.roleId === person.roleId);
@@ -65,7 +64,7 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
         </div>
       </section>
 
-      <WeekScheduleTable personId={person.id} weekStart={weekStart} template={selectedTemplate} overrides={overrides} weekAssigned={!!weekPlan} onUpsertOverride={onUpsertOverride} onRevertOverride={onRevertOverride} />
+      <WeekScheduleTable personId={person.id} weekStart={weekStart} template={selectedTemplate} overrides={overrides} weekAssigned={!!weekPlan} onUpsertOverride={onUpsertOverride} />
 
       <footer className="filters-footer schedule-footer">
         <div className="filters-footer-actions">

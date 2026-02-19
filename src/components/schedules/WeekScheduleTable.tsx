@@ -1,4 +1,6 @@
-import { DAY_LABELS, createEmptyDaySlot, formatDateCompact, formatSlot, getDayKey, resolveSchedule, toISODate, weekDates } from '../../lib/scheduleUtils';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp } from '../../lib/icons';
+import { DAY_LABELS, createEmptyDaySlot, getDayKey, slotValidationError, resolveSchedule, toISODate, weekDates } from '../../lib/scheduleUtils';
 import type { ScheduleOverride, ScheduleTemplate } from '../../types';
 import { TimeInput24 } from '../TimeInput24';
 
@@ -9,56 +11,53 @@ type Props = {
   overrides: ScheduleOverride[];
   weekAssigned: boolean;
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
-  onRevertOverride: (dateISO: string) => void;
 };
 
-export const WeekScheduleTable = ({ personId, weekStart, template, overrides, weekAssigned, onUpsertOverride, onRevertOverride }: Props) => {
+export const WeekScheduleTable = ({ personId, weekStart, template, overrides, weekAssigned, onUpsertOverride }: Props) => {
   const dates = weekDates(weekStart);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <section className="card schedule-week-card">
-      <h3>Semana</h3>
-      <div className="week-day-list">
+      <button className="week-section-toggle" onClick={() => setExpanded((current) => !current)}>
+        <span>Semana</span>
+        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
+
+      {expanded ? <div className="week-day-list">
         {dates.map((date) => {
           const dateISO = toISODate(date);
           const resolved = weekAssigned ? resolveSchedule(personId, dateISO, template, overrides) : { source: 'none' as const, slot: createEmptyDaySlot() };
           const override = weekAssigned ? overrides.find((item) => item.personId === personId && item.dateISO === dateISO) : undefined;
           const dayKey = getDayKey(date);
-          const badge = resolved.source === 'override' ? 'Ajuste' : resolved.source === 'template' ? 'Base' : 'Libre';
-          return (
-            <article key={dateISO} className="week-day-row">
-              <div className="week-day-head">
-                <strong>{DAY_LABELS[dayKey]} {formatDateCompact(date)}</strong>
-                <span className={`chip ${resolved.source === 'override' ? 'warning' : 'muted'}`}>{badge}</span>
-              </div>
+          const slot = { start: override?.start ?? resolved.slot.start, end: override?.end ?? resolved.slot.end };
+          const invalid = !!slotValidationError(slot);
 
-              <div className="day-controls">
-                <TimeInput24
-                  disabled={!weekAssigned}
-                  value={override?.start ?? resolved.slot.start ?? ''}
-                  onChange={(value) => {
-                    const nextStart = value || null;
-                    onUpsertOverride(dateISO, nextStart, override?.end ?? resolved.slot.end ?? null);
-                  }}
-                  step={60}
-                />
-                <TimeInput24
-                  disabled={!weekAssigned}
-                  value={override?.end ?? resolved.slot.end ?? ''}
-                  onChange={(value) => {
-                    const nextEnd = value || null;
-                    onUpsertOverride(dateISO, override?.start ?? resolved.slot.start ?? null, nextEnd);
-                  }}
-                  step={60}
-                />
-                <button className="ghost" disabled={!weekAssigned} onClick={() => onUpsertOverride(dateISO, null, null)}>Libre</button>
-                {override ? <button onClick={() => onRevertOverride(dateISO)}>Revertir</button> : null}
-              </div>
-              <p className="week-day-preview">{formatSlot({ start: override?.start ?? resolved.slot.start, end: override?.end ?? resolved.slot.end })}</p>
+          return (
+            <article key={dateISO} className={`week-day-row compact ${invalid ? 'invalid' : ''}`}>
+              <strong>{DAY_LABELS[dayKey]}</strong>
+              <TimeInput24
+                disabled={!weekAssigned}
+                value={slot.start ?? ''}
+                onChange={(value) => {
+                  const nextStart = value || null;
+                  onUpsertOverride(dateISO, nextStart, slot.end ?? null);
+                }}
+                step={60}
+              />
+              <TimeInput24
+                disabled={!weekAssigned}
+                value={slot.end ?? ''}
+                onChange={(value) => {
+                  const nextEnd = value || null;
+                  onUpsertOverride(dateISO, slot.start ?? null, nextEnd);
+                }}
+                step={60}
+              />
             </article>
           );
         })}
-      </div>
+      </div> : null}
     </section>
   );
 };
