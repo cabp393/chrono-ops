@@ -97,7 +97,7 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
   };
 
   return (
-    <main className="dashboard-layout schedules-layout">
+    <main className={`dashboard-layout schedules-layout ${selectedPersonId ? 'has-selection' : ''}`}>
       <PeopleList
         people={people}
         functions={functions}

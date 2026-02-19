@@ -47,8 +47,11 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
 
       <WeekScheduleTable personId={person.id} weekStart={weekStart} template={selectedTemplate} overrides={overrides} weekAssigned={!!weekPlan} onUpsertOverride={onUpsertOverride} />
 
-      <footer className="filters-footer schedule-footer">
-        <div className="filters-footer-actions schedule-footer-actions">
+      {hasInvalidSlots ? <p className="error schedule-inline-error">Corrige horarios inválidos antes de guardar.</p> : null}
+
+      <footer className="schedule-footer">
+        <span className="schedule-unsaved-note">{hasUnsavedChanges ? 'Cambios sin guardar' : ''}</span>
+        <div className="schedule-footer-actions">
           <button className="icon-btn schedule-action-btn" onClick={onReset} aria-label="Cancelar" title="Cancelar">
             <X size={16} />
           </button>
@@ -56,8 +59,6 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
             <Save size={16} />
           </button>
         </div>
-        {hasInvalidSlots ? <span className="error">Corrige horarios inválidos antes de guardar.</span> : null}
-        {hasUnsavedChanges ? <span className="pending-badge">Cambios sin guardar</span> : null}
       </footer>
     </section>
   );
