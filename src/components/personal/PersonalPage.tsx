@@ -1,96 +1,130 @@
 import { useMemo, useState } from 'react';
-import type { Function, Person, Role } from '../../types';
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import type { Function, Role, ScheduleTemplate } from '../../types';
+import { createTemplate } from '../../lib/scheduleUtils';
+import { TemplateModal } from '../schedules/TemplateModal';
 
 type Props = {
-  people: Person[];
   roles: Role[];
   functions: Function[];
-  onCreatePerson: () => void;
-  onSavePerson: (person: Person) => void;
-  onDeletePerson: (personId: string) => void;
+  templates: ScheduleTemplate[];
+  onSaveTemplates: (templates: ScheduleTemplate[]) => void;
   onCreateRole: (name: string, color?: string) => string;
+  onRenameRole: (roleId: string, name: string) => void;
   onDeleteRole: (roleId: string) => boolean;
   onCreateFunction: (roleId: string, name: string) => void;
   onRenameFunction: (functionId: string, name: string) => void;
   onDeleteFunction: (functionId: string) => boolean;
 };
 
-export const PersonalPage = ({ people, roles, functions, onCreatePerson, onSavePerson, onDeletePerson, onCreateRole, onDeleteRole, onCreateFunction, onRenameFunction, onDeleteFunction }: Props) => {
-  const [search, setSearch] = useState('');
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(people[0]?.id ?? null);
-  const [selectedRoleForFunctions, setSelectedRoleForFunctions] = useState<string>(roles[0]?.id ?? '');
-  const person = people.find((item) => item.id === selectedPersonId) ?? null;
-  const [draftName, setDraftName] = useState(person?.nombre ?? '');
-  const [draftRoleId, setDraftRoleId] = useState(person?.roleId ?? roles[0]?.id ?? '');
-  const roleById = new Map(roles.map((role) => [role.id, role]));
-  const filteredPeople = useMemo(() => people.filter((item) => item.nombre.toLowerCase().includes(search.toLowerCase())), [people, search]);
+type ModalState =
+  | { type: 'create-role' }
+  | { type: 'edit-role'; roleId: string; initial: string }
+  | { type: 'delete-role'; roleId: string }
+  | { type: 'create-function'; roleId: string }
+  | { type: 'edit-function'; functionId: string; initial: string }
+  | { type: 'delete-function'; functionId: string }
+  | null;
+
+export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onCreateRole, onRenameRole, onDeleteRole, onCreateFunction, onRenameFunction, onDeleteFunction }: Props) => {
+  const groupedFunctions = useMemo(() => new Map(roles.map((role) => [role.id, functions.filter((fn) => fn.roleId === role.id)])), [roles, functions]);
+  const [modal, setModal] = useState<ModalState>(null);
+  const [nameDraft, setNameDraft] = useState('');
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+
+  const openModal = (next: ModalState, value = '') => {
+    setModal(next);
+    setNameDraft(value);
+  };
 
   return (
-    <main className="dashboard-layout schedules-layout">
-      <aside className="card schedules-people-list">
-        <button className="primary" onClick={onCreatePerson}>+ Trabajador</button>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar trabajador" />
-        <div className="people-items">
-          {filteredPeople.map((item) => (
-            <button key={item.id} className={`person-item ${item.id === selectedPersonId ? 'active' : ''}`} onClick={() => { setSelectedPersonId(item.id); setDraftName(item.nombre); setDraftRoleId(item.roleId); }}>
-              <strong>{item.nombre}</strong>
-              <p>{roleById.get(item.roleId)?.nombre ?? 'Sin rol'}</p>
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      <section className="schedule-editor-col">
-        {person ? <section className="card">
-          <h3>Trabajador</h3>
-          <input value={draftName} onChange={(event) => setDraftName(event.target.value)} placeholder="Nombre" />
-          <select value={draftRoleId} onChange={(event) => {
-            if (event.target.value === '__new_role__') {
-              const name = window.prompt('Nombre del rol');
-              if (!name) return;
-              const roleId = onCreateRole(name);
-              setDraftRoleId(roleId);
-              return;
-            }
-            setDraftRoleId(event.target.value);
-          }}>
-            {roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
-            <option value="__new_role__">+ Crear rol</option>
-          </select>
-          <div className="filters-footer-actions">
-            <button className="primary" onClick={() => onSavePerson({ ...person, nombre: draftName, roleId: draftRoleId })}>Guardar cambios</button>
-            <button className="ghost" onClick={() => window.confirm('¿Eliminar trabajador?') && onDeletePerson(person.id)}>Eliminar trabajador</button>
-          </div>
-        </section> : null}
-
-        <section className="card">
+    <main className="dashboard-layout personal-layout">
+      <section className="card">
+        <div className="section-head">
           <h3>Roles y funciones</h3>
-          <div className="template-assignment-row">
-            <select value={selectedRoleForFunctions} onChange={(event) => setSelectedRoleForFunctions(event.target.value)}>
-              {roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
-            </select>
-            <button className="ghost" onClick={() => !onDeleteRole(selectedRoleForFunctions) && window.alert('Reasigna trabajadores antes de eliminar')}>Eliminar rol</button>
-            <button onClick={() => {
-              const name = window.prompt('Nombre de la función');
-              if (name) onCreateFunction(selectedRoleForFunctions, name);
-            }}>+ Crear función</button>
-          </div>
-          <div className="people-items">
-            {functions.filter((item) => item.roleId === selectedRoleForFunctions).map((item) => (
-              <div className="person-item" key={item.id}>
-                <strong>{item.nombre}</strong>
-                <div className="filters-footer-actions">
-                  <button className="ghost" onClick={() => {
-                    const next = window.prompt('Nuevo nombre', item.nombre);
-                    if (next) onRenameFunction(item.id, next);
-                  }}>Editar</button>
-                  <button className="ghost" onClick={() => !onDeleteFunction(item.id) && window.alert('La función está en uso en Horarios.')}>Eliminar</button>
+          <button className="icon-btn" onClick={() => openModal({ type: 'create-role' })} aria-label="Crear rol" title="Crear rol"><Plus size={14} /></button>
+        </div>
+        <div className="role-tree">
+          {roles.map((role) => (
+            <div className="role-tree-item" key={role.id}>
+              <div className="role-row">
+                <strong>{role.nombre}</strong>
+                <div className="tree-actions">
+                  <button className="icon-btn" onClick={() => openModal({ type: 'create-function', roleId: role.id })} aria-label="Agregar función" title="Agregar función"><Plus size={14} /></button>
+                  <button className="icon-btn" onClick={() => openModal({ type: 'edit-role', roleId: role.id, initial: role.nombre }, role.nombre)} aria-label="Editar rol" title="Editar rol"><Pencil size={14} /></button>
+                  <button className="icon-btn" onClick={() => openModal({ type: 'delete-role', roleId: role.id })} aria-label="Eliminar rol" title="Eliminar rol"><Trash2 size={14} /></button>
                 </div>
               </div>
-            ))}
+              <div className="function-tree-list">
+                {(groupedFunctions.get(role.id) ?? []).map((fn) => (
+                  <div className="function-row" key={fn.id}>
+                    <span>{fn.nombre}</span>
+                    <div className="tree-actions">
+                      <button className="icon-btn" onClick={() => openModal({ type: 'edit-function', functionId: fn.id, initial: fn.nombre }, fn.nombre)} aria-label="Editar función" title="Editar función"><Pencil size={14} /></button>
+                      <button className="icon-btn" onClick={() => openModal({ type: 'delete-function', functionId: fn.id })} aria-label="Eliminar función" title="Eliminar función"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="section-head">
+          <h3>Plantillas de turnos</h3>
+          <button className="icon-btn" onClick={() => onSaveTemplates([...templates, createTemplate(`Nueva plantilla ${templates.length + 1}`)])} aria-label="Crear plantilla" title="Crear plantilla"><Plus size={14} /></button>
+        </div>
+        <div className="template-compact-list">
+          {templates.map((template) => (
+            <div className="template-compact-item" key={template.id}>
+              <span>{template.name}</span>
+              <div className="tree-actions">
+                <button className="icon-btn" onClick={() => setTemplateModalOpen(true)} aria-label="Editar plantilla" title="Editar plantilla"><Pencil size={14} /></button>
+                <button className="icon-btn" onClick={() => onSaveTemplates(templates.filter((item) => item.id !== template.id))} aria-label="Eliminar plantilla" title="Eliminar plantilla"><Trash2 size={14} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {modal ? <div className="modal-backdrop" role="dialog" aria-modal="true">
+        <section className="modal compact-modal">
+          <h3>
+            {modal.type === 'create-role' ? 'Crear rol' : null}
+            {modal.type === 'edit-role' ? 'Editar rol' : null}
+            {modal.type === 'delete-role' ? 'Eliminar rol' : null}
+            {modal.type === 'create-function' ? 'Crear función' : null}
+            {modal.type === 'edit-function' ? 'Editar función' : null}
+            {modal.type === 'delete-function' ? 'Eliminar función' : null}
+          </h3>
+
+          {modal.type.includes('delete') ? <p className="empty-state">Confirma la acción para continuar.</p> : <input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="Nombre" />}
+
+          <div className="modal-actions">
+            <button className="icon-btn" onClick={() => setModal(null)} aria-label="Cancelar" title="Cancelar"><X size={14} /></button>
+            <button className="icon-btn primary" onClick={() => {
+              if (modal.type === 'create-role' && nameDraft.trim()) onCreateRole(nameDraft.trim());
+              if (modal.type === 'edit-role' && nameDraft.trim()) onRenameRole(modal.roleId, nameDraft.trim());
+              if (modal.type === 'create-function' && nameDraft.trim()) onCreateFunction(modal.roleId, nameDraft.trim());
+              if (modal.type === 'edit-function' && nameDraft.trim()) onRenameFunction(modal.functionId, nameDraft.trim());
+              if (modal.type === 'delete-role' && !onDeleteRole(modal.roleId)) window.alert('Reasigna trabajadores antes de eliminar');
+              if (modal.type === 'delete-function' && !onDeleteFunction(modal.functionId)) window.alert('La función está en uso en Horarios.');
+              setModal(null);
+            }} aria-label="Confirmar" title="Confirmar">
+              <Check size={14} />
+            </button>
           </div>
         </section>
-      </section>
+      </div> : null}
+
+      <TemplateModal
+        open={templateModalOpen}
+        templates={templates}
+        onClose={() => setTemplateModalOpen(false)}
+        onSave={onSaveTemplates}
+      />
     </main>
   );
 };

@@ -62,36 +62,38 @@ function App() {
       {view === 'schedules' ? <SchedulesPage
         weekStart={weekStart}
         people={state.people}
+        roles={state.roles}
         functions={state.functions}
         templates={state.templates}
         personWeekPlans={state.personWeekPlans}
         personFunctionWeeks={state.personFunctionWeeks}
         overrides={state.overrides}
         onChange={(next) => { const merged = saveAll({ ...state, ...next }); setState(merged); }}
-      /> : null}
-
-      {view === 'personal' ? <PersonalPage
-        people={state.people}
-        roles={state.roles}
-        functions={state.functions}
-        onCreatePerson={() => {
-          const roleId = state.roles[0]?.id ?? '';
-          const next = saveAll({ ...state, people: [...state.people, { id: crypto.randomUUID(), nombre: 'Nuevo trabajador', roleId }] });
+        onCreatePerson={({ nombre, roleId }) => {
+          const next = saveAll({ ...state, people: [...state.people, { id: crypto.randomUUID(), nombre, roleId }] });
           setState(next);
         }}
-        onSavePerson={(person) => {
+        onUpdatePerson={(person) => {
           const weekISO = weekStartISOFromDate(new Date());
           const validFunctionIds = new Set(state.functions.filter((fn) => fn.roleId === person.roleId).map((fn) => fn.id));
           const next = saveAll({ ...state, people: state.people.map((row) => row.id === person.id ? person : row), personFunctionWeeks: clearIncompatibleWeekFunction(state.personFunctionWeeks, person.id, weekISO, validFunctionIds) });
           setState(next);
         }}
         onDeletePerson={(personId) => setState(saveAll(removePersonCascade(state, personId)))}
+      /> : null}
+
+      {view === 'personal' ? <PersonalPage
+        roles={state.roles}
+        functions={state.functions}
+        templates={state.templates}
+        onSaveTemplates={(templates) => setState(saveAll({ ...state, templates }))}
         onCreateRole={(name, color) => {
           const role = { id: crypto.randomUUID(), nombre: name, color };
           const next = saveAll({ ...state, roles: [...state.roles, role] });
           setState(next);
           return role.id;
         }}
+        onRenameRole={(roleId, name) => setState(saveAll({ ...state, roles: state.roles.map((role) => role.id === roleId ? { ...role, nombre: name } : role) }))}
         onDeleteRole={(roleId) => {
           if (state.people.some((person) => person.roleId === roleId)) return false;
           const next = saveAll({ ...state, roles: state.roles.filter((role) => role.id !== roleId), functions: state.functions.filter((fn) => fn.roleId !== roleId) });
