@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
+import { Plus } from 'lucide-react';
+import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, Role, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { DAY_KEYS, isValidSlot, toISODate } from '../../lib/scheduleUtils';
 import { PeopleList } from './PeopleList';
 import { PersonScheduleEditor } from './PersonScheduleEditor';
-import { TemplateModal } from './TemplateModal';
+import { WorkerModal } from './WorkerModal';
 
 type Props = {
   people: Person[];
+  roles: Role[];
   functions: Function[];
   templates: ScheduleTemplate[];
   personWeekPlans: PersonWeekPlan[];
@@ -14,14 +16,17 @@ type Props = {
   overrides: ScheduleOverride[];
   weekStart: Date;
   onChange: (next: { templates: ScheduleTemplate[]; personWeekPlans: PersonWeekPlan[]; personFunctionWeeks: PersonFunctionWeek[]; overrides: ScheduleOverride[] }) => void;
+  onCreatePerson: (payload: { nombre: string; roleId: string }) => void;
+  onUpdatePerson: (person: Person) => void;
+  onDeletePerson: (personId: string) => void;
 };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-export const SchedulesPage = ({ people, functions, templates, personWeekPlans, personFunctionWeeks, overrides, weekStart, onChange }: Props) => {
+export const SchedulesPage = ({ people, roles, functions, templates, personWeekPlans, personFunctionWeeks, overrides, weekStart, onChange, onCreatePerson, onUpdatePerson, onDeletePerson }: Props) => {
   const [search, setSearch] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [workerModalOpen, setWorkerModalOpen] = useState(false);
 
   const [draftWeekPlans, setDraftWeekPlans] = useState<PersonWeekPlan[]>(personWeekPlans);
   const [draftFunctionWeeks, setDraftFunctionWeeks] = useState<PersonFunctionWeek[]>(personFunctionWeeks);
@@ -115,6 +120,7 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
 
       <PersonScheduleEditor
         person={selectedPerson}
+        roles={roles}
         functions={functions}
         templates={templates}
         weekPlan={selectedWeekPlan}
@@ -125,20 +131,27 @@ export const SchedulesPage = ({ people, functions, templates, personWeekPlans, p
         hasInvalidSlots={hasInvalidSlots}
         onTemplateChange={(templateId) => upsertWeekPlan({ templateId })}
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
-        onOpenTemplateModal={() => setTemplateModalOpen(true)}
         onUpsertOverride={upsertOverride}
+        onUpdatePerson={onUpdatePerson}
+        onDeletePerson={(personId) => {
+          onDeletePerson(personId);
+          setSelectedPersonId(null);
+        }}
         onReset={cancelEditing}
         onSave={() => !hasInvalidSlots && onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides })}
       />
 
-      <TemplateModal
-        open={templateModalOpen}
-        templates={templates}
-        onClose={() => setTemplateModalOpen(false)}
-        onSave={(nextTemplates) => {
-          const sanitize = (rows: PersonWeekPlan[]) => rows.map((item) => nextTemplates.some((tpl) => tpl.id === item.templateId) ? item : { ...item, templateId: null });
-          onChange({ templates: nextTemplates, personWeekPlans: sanitize(personWeekPlans), personFunctionWeeks, overrides });
-          setDraftWeekPlans(sanitize(draftWeekPlans));
+      {!selectedPersonId ? <footer className="schedule-footer schedule-footer-create">
+        <button className="primary" onClick={() => setWorkerModalOpen(true)}><Plus size={14} />Añadir trabajador</button>
+      </footer> : null}
+
+      <WorkerModal
+        open={workerModalOpen}
+        roles={roles}
+        onClose={() => setWorkerModalOpen(false)}
+        onSave={(payload) => {
+          onCreatePerson(payload);
+          setWorkerModalOpen(false);
         }}
       />
     </main>

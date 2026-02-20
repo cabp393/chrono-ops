@@ -1,9 +1,11 @@
-import { Save, X } from 'lucide-react';
-import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, ScheduleOverride, ScheduleTemplate } from '../../types';
+import { ChevronDown, ChevronUp, Save, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, Role, ScheduleOverride, ScheduleTemplate } from '../../types';
 import { WeekScheduleTable } from './WeekScheduleTable';
 
 type Props = {
   person: Person | undefined;
+  roles: Role[];
   functions: Function[];
   templates: ScheduleTemplate[];
   weekPlan: PersonWeekPlan | undefined;
@@ -14,13 +16,26 @@ type Props = {
   hasInvalidSlots: boolean;
   onTemplateChange: (templateId: string | null) => void;
   onFunctionChange: (functionId: string | null) => void;
-  onOpenTemplateModal: () => void;
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
+  onUpdatePerson: (person: Person) => void;
+  onDeletePerson: (personId: string) => void;
   onReset: () => void;
   onSave: () => void;
 };
 
-export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onOpenTemplateModal, onUpsertOverride, onReset, onSave }: Props) => {
+export const PersonScheduleEditor = ({ person, roles, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onUpsertOverride, onUpdatePerson, onDeletePerson, onReset, onSave }: Props) => {
+  const [workerExpanded, setWorkerExpanded] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [draftName, setDraftName] = useState(person?.nombre ?? '');
+  const [draftRoleId, setDraftRoleId] = useState(person?.roleId ?? roles[0]?.id ?? '');
+
+  useEffect(() => {
+    setWorkerExpanded(false);
+    setConfirmDeleteOpen(false);
+    setDraftName(person?.nombre ?? '');
+    setDraftRoleId(person?.roleId ?? roles[0]?.id ?? '');
+  }, [person?.id, person?.nombre, person?.roleId, roles]);
+
   if (!person) return null;
 
   const roleFunctions = functions.filter((item) => item.roleId === person.roleId);
@@ -28,10 +43,35 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
 
   return (
     <section className="schedule-editor-col">
+      <section className="card schedule-worker-card">
+        <button className="week-section-toggle" onClick={() => setWorkerExpanded((current) => !current)} aria-label="Expandir sección trabajador">
+          <span>Trabajador</span>
+          {workerExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {workerExpanded ? <div className="worker-edit-grid">
+          <input value={draftName} onChange={(event) => setDraftName(event.target.value)} placeholder="Nombre" />
+          <select value={draftRoleId} onChange={(event) => setDraftRoleId(event.target.value)}>
+            {roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
+          </select>
+          <div className="worker-card-actions">
+            <button
+              className="icon-btn"
+              onClick={() => onUpdatePerson({ ...person, nombre: draftName.trim(), roleId: draftRoleId })}
+              disabled={!draftName.trim() || !draftRoleId}
+              aria-label="Guardar trabajador"
+              title="Guardar trabajador"
+            >
+              <Save size={14} />
+            </button>
+            <button className="danger" onClick={() => setConfirmDeleteOpen(true)}><Trash2 size={14} />Eliminar trabajador</button>
+          </div>
+        </div> : null}
+      </section>
+
       <section className="card template-assignment-card">
         <h3>Asignación semanal</h3>
         {!weekPlan ? <p className="empty-state">Semana sin asignación. Selecciona función y plantilla, luego guarda cambios.</p> : null}
-        <div className="template-assignment-row">
+        <div className="template-assignment-row compact-two">
           <select value={functionWeek?.functionId ?? ''} onChange={(event) => onFunctionChange(event.target.value || null)}>
             <option value="">Sin función</option>
             {roleFunctions.map((item) => <option value={item.id} key={item.id}>{item.nombre}</option>)}
@@ -41,7 +81,6 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
             <option value="">Sin plantilla</option>
             {templates.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
           </select>
-          <button onClick={onOpenTemplateModal}>Gestionar plantillas</button>
         </div>
       </section>
 
@@ -60,6 +99,17 @@ export const PersonScheduleEditor = ({ person, functions, templates, weekPlan, f
           </button>
         </div>
       </footer>
+
+      {confirmDeleteOpen ? <div className="modal-backdrop" role="dialog" aria-modal="true">
+        <section className="modal compact-modal">
+          <h3>Eliminar trabajador</h3>
+          <p>Esta acción eliminará sus asignaciones y ajustes semanales.</p>
+          <div className="modal-actions">
+            <button className="icon-btn" onClick={() => setConfirmDeleteOpen(false)} aria-label="Cancelar" title="Cancelar"><X size={14} /></button>
+            <button className="icon-btn danger-icon" onClick={() => onDeletePerson(person.id)} aria-label="Confirmar eliminación" title="Confirmar eliminación"><Trash2 size={14} /></button>
+          </div>
+        </section>
+      </div> : null}
     </section>
   );
 };

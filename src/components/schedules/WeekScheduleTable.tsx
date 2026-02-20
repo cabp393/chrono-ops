@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from '../../lib/icons';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DAY_LABELS, createEmptyDaySlot, getDayKey, slotValidationError, resolveSchedule, toISODate, weekDates } from '../../lib/scheduleUtils';
 import type { ScheduleOverride, ScheduleTemplate } from '../../types';
 import { TimeInput24 } from '../TimeInput24';
