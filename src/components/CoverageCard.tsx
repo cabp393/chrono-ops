@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Function, Role, ScheduleBlock, TimeScale } from '../types';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Function, Person, Role, ScheduleBlock, TimeScale } from '../types';
 
 type WeekBlock = {
   start: Date;
@@ -12,9 +13,12 @@ type WeekBlock = {
   byFunction: Record<string, number>;
 };
 
-type SampledBar = {
-  value: number;
-  key: string;
+type SelectedHeatbar = {
+  mode: 'rol' | 'funcion';
+  keyId: string;
+  dayIndex: number;
+  startMin: number;
+  endMin: number;
 };
 
 type HeatbarRowProps = {
@@ -22,91 +26,55 @@ type HeatbarRowProps = {
   color: string;
   maxValue: number;
   valueFromBlock: (block: WeekBlock) => number;
+  onSelectBlock: (block: WeekBlock) => void;
 };
 
 type Props = {
   roles: Role[];
   functions: Function[];
+  people: Person[];
   scheduleBlocks: ScheduleBlock[];
   weekStart: Date;
   scale: TimeScale;
   activePeople: number;
 };
 
-const BAR_WIDTH = 3;
-const BAR_GAP = 1;
+const MINUTES_IN_DAY = 24 * 60;
 
-const sampleWeekBlocks = (blocks: WeekBlock[], barsCount: number, valueFromBlock: (block: WeekBlock) => number): SampledBar[] => {
-  if (blocks.length === 0 || barsCount <= 0) return [];
-
-  if (blocks.length <= barsCount) {
-    return blocks.map((block) => ({
-      value: valueFromBlock(block),
-      key: `${block.dayIndex}-${block.blockIndex}`
-    }));
-  }
-
-  const sampled: SampledBar[] = [];
-  for (let i = 0; i < barsCount; i += 1) {
-    const start = Math.floor((i * blocks.length) / barsCount);
-    const end = Math.max(start, Math.floor(((i + 1) * blocks.length) / barsCount) - 1);
-    const chunk = blocks.slice(start, end + 1);
-    const avg = chunk.reduce((sum, block) => sum + valueFromBlock(block), 0) / chunk.length;
-    const middle = chunk[Math.floor(chunk.length / 2)] ?? chunk[0];
-
-    sampled.push({
-      value: avg,
-      key: `${middle.dayIndex}-${middle.blockIndex}`
-    });
-  }
-
-  return sampled;
-};
-
-const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock }: HeatbarRowProps) => {
-  const rowRef = useRef<HTMLDivElement | null>(null);
-  const [barsCount, setBarsCount] = useState(() => blocks.length || 1);
-
-  useEffect(() => {
-    const element = rowRef.current;
-    if (!element) return;
-
-    const updateBarsCount = () => {
-      const width = element.clientWidth;
-      const nextCount = Math.max(1, Math.floor((width + BAR_GAP) / (BAR_WIDTH + BAR_GAP)));
-      setBarsCount(nextCount);
-    };
-
-    updateBarsCount();
-
-    const observer = new ResizeObserver(() => updateBarsCount());
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, []);
-
-  const bars = useMemo(() => sampleWeekBlocks(blocks, barsCount, valueFromBlock), [blocks, barsCount, valueFromBlock]);
-
+const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelectBlock }: HeatbarRowProps) => {
   return (
-    <div className="heatbar-line" ref={rowRef}>
-      {bars.map((bar, index) => (
-        <span
-          key={`${bar.key}-${index}`}
+    <div className="heatbar-line">
+      {blocks.map((block) => {
+        const value = valueFromBlock(block);
+        return <button
+          key={`${block.dayIndex}-${block.blockIndex}`}
+          type="button"
           className="heatbar-segment"
+          aria-label={`Abrir detalle ${block.start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`}
+          onClick={() => onSelectBlock(block)}
           style={{
             flex: '1 1 0',
             minWidth: 0,
-            opacity: bar.value === 0 ? 0.1 : 0.15 + (bar.value / Math.max(maxValue, 1)) * 0.85,
+            opacity: value === 0 ? 0.1 : 0.15 + (value / Math.max(maxValue, 1)) * 0.85,
             backgroundColor: color
           }}
-        />
-      ))}
+        />;
+      })}
     </div>
   );
 };
 
-export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scale, activePeople }: Props) => {
+export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, activePeople }: Props) => {
   const [view, setView] = useState<'role' | 'function'>('role');
+  const [selectedHeatbar, setSelectedHeatbar] = useState<SelectedHeatbar | null>(null);
+
+  useEffect(() => {
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedHeatbar(null);
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, []);
 
   const weekBlocks = useMemo(() => {
     const totalBlocks = (24 * 60) / scale;
@@ -175,6 +143,83 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
     return byRole;
   }, [functions]);
 
+  const peopleById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
+  const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
+  const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
+
+  const blocksPerDay = MINUTES_IN_DAY / scale;
+
+  const selectedRange = useMemo(() => {
+    if (!selectedHeatbar) return null;
+    const dayStart = new Date(weekStart);
+    dayStart.setDate(weekStart.getDate() + selectedHeatbar.dayIndex);
+    dayStart.setHours(0, 0, 0, 0);
+    const start = new Date(dayStart.getTime() + selectedHeatbar.startMin * 60 * 1000);
+    const end = new Date(dayStart.getTime() + selectedHeatbar.endMin * 60 * 1000);
+    return { start, end };
+  }, [selectedHeatbar, weekStart]);
+
+  const selectedWorkers = useMemo(() => {
+    if (!selectedHeatbar || !selectedRange) return [];
+    const workersById = new Map<string, { person: Person; functionNames: Set<string> }>();
+
+    scheduleBlocks.forEach((block) => {
+      const matchesMode = selectedHeatbar.mode === 'rol'
+        ? block.roleId === selectedHeatbar.keyId
+        : block.functionId === selectedHeatbar.keyId;
+      if (!matchesMode) return;
+
+      const start = new Date(block.startISO).getTime();
+      const end = new Date(block.endISO).getTime();
+      if (Math.min(end, selectedRange.end.getTime()) <= Math.max(start, selectedRange.start.getTime())) return;
+
+      const person = peopleById.get(block.personId);
+      if (!person) return;
+
+      const entry = workersById.get(person.id) ?? { person, functionNames: new Set<string>() };
+      const functionName = functionsById.get(block.functionId)?.nombre;
+      if (functionName) entry.functionNames.add(functionName);
+      workersById.set(person.id, entry);
+    });
+
+    return Array.from(workersById.values())
+      .map((entry) => ({ ...entry, functionLabel: Array.from(entry.functionNames).sort((a, b) => a.localeCompare(b, 'es')).join(', ') }))
+      .sort((a, b) => a.person.nombre.localeCompare(b.person.nombre, 'es'));
+  }, [functionsById, peopleById, scheduleBlocks, selectedHeatbar, selectedRange]);
+
+  const selectedLabel = useMemo(() => {
+    if (!selectedHeatbar) return '';
+    return selectedHeatbar.mode === 'rol'
+      ? (rolesById.get(selectedHeatbar.keyId)?.nombre ?? '')
+      : (functionsById.get(selectedHeatbar.keyId)?.nombre ?? '');
+  }, [functionsById, rolesById, selectedHeatbar]);
+
+  const selectedLinear = selectedHeatbar ? (selectedHeatbar.dayIndex * blocksPerDay) + (selectedHeatbar.startMin / scale) : -1;
+  const maxLinear = (7 * blocksPerDay) - 1;
+
+  const navigateBlock = (direction: -1 | 1) => {
+    if (!selectedHeatbar) return;
+    const nextLinear = selectedLinear + direction;
+    if (nextLinear < 0 || nextLinear > maxLinear) return;
+    const dayIndex = Math.floor(nextLinear / blocksPerDay);
+    const blockIndex = nextLinear % blocksPerDay;
+    setSelectedHeatbar({
+      ...selectedHeatbar,
+      dayIndex,
+      startMin: blockIndex * scale,
+      endMin: (blockIndex + 1) * scale
+    });
+  };
+
+  const selectedTitle = useMemo(() => {
+    if (!selectedRange) return '';
+    const dayLabel = selectedRange.start.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const normalizedDay = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1).replace('.', '');
+    const startTime = selectedRange.start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endTime = selectedRange.end.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${normalizedDay} · ${startTime}–${endTime}`;
+  }, [selectedRange]);
+
   return (
     <section className="card coverage-card">
       <div className="coverage-head">
@@ -201,6 +246,7 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
                     color={role.color || '#60a5fa'}
                     maxValue={rowMax}
                     valueFromBlock={(block) => block.byRole[role.id] || 0}
+                    onSelectBlock={(block) => setSelectedHeatbar({ mode: 'rol', keyId: role.id, dayIndex: block.dayIndex, startMin: block.blockIndex * scale, endMin: (block.blockIndex + 1) * scale })}
                   />
                 </div>
               );
@@ -220,6 +266,7 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
                     color={role.color || '#60a5fa'}
                     maxValue={rowMax}
                     valueFromBlock={(block) => block.byFunction[fn.id] || 0}
+                    onSelectBlock={(block) => setSelectedHeatbar({ mode: 'funcion', keyId: fn.id, dayIndex: block.dayIndex, startMin: block.blockIndex * scale, endMin: (block.blockIndex + 1) * scale })}
                   />
                 </div>
               );
@@ -227,6 +274,36 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
           </div>
         </>
       )}
+
+      {selectedHeatbar && selectedRange ? <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => setSelectedHeatbar(null)}>
+        <section className="modal coverage-detail-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="coverage-detail-head">
+            <div>
+              <h3>{selectedTitle}</h3>
+              <p>{selectedHeatbar.mode === 'funcion' ? 'Función' : 'Rol'}: {selectedLabel}</p>
+            </div>
+            <div className="coverage-detail-actions">
+              <button type="button" className="icon-btn" onClick={() => navigateBlock(-1)} disabled={selectedLinear <= 0} aria-label="Bloque anterior"><ChevronLeft size={14} /></button>
+              <button type="button" className="icon-btn" onClick={() => navigateBlock(1)} disabled={selectedLinear >= maxLinear} aria-label="Bloque siguiente"><ChevronRight size={14} /></button>
+              <button type="button" className="icon-btn" onClick={() => setSelectedHeatbar(null)} aria-label="Cerrar"><X size={14} /></button>
+            </div>
+          </div>
+
+          <p className="coverage-detail-count">{selectedWorkers.length} {selectedWorkers.length === 1 ? 'trabajador' : 'trabajadores'}</p>
+          {selectedWorkers.length === 0 ? <p className="empty-state">Sin cobertura en este rango.</p> : <div className="coverage-detail-list">
+            {selectedWorkers.map((worker) => {
+              const role = rolesById.get(worker.person.roleId);
+              return <article key={worker.person.id} className="coverage-worker-item">
+                <span className="coverage-worker-dot" style={{ backgroundColor: role?.color || '#60a5fa' }} />
+                <div>
+                  <p className="coverage-worker-name">{worker.person.nombre}</p>
+                  <p className="coverage-worker-function">{worker.functionLabel || 'Sin función'}</p>
+                </div>
+              </article>;
+            })}
+          </div>}
+        </section>
+      </div> : null}
     </section>
   );
 };

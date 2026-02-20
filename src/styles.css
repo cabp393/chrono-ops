@@ -98,8 +98,19 @@ select, input {
 .coverage-rows { margin-top: 10px; display: grid; gap: 8px; }
 .coverage-row { width: 100%; min-width: 0; overflow: hidden; display: grid; gap: 4px; }
 .coverage-mini-title { margin: 0; font-size: 10px; font-weight: 700; color: #0f172a; }
-.coverage-row .heatbar-segment { height: 10px; pointer-events: none; }
+.coverage-row .heatbar-segment { height: 10px; cursor: pointer; }
 .coverage-card { position: relative; }
+
+.coverage-detail-modal { width: min(560px, 94vw); max-height: 82vh; overflow: auto; }
+.coverage-detail-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.coverage-detail-actions { display: inline-flex; gap: 6px; }
+.coverage-detail-count { margin-top: 12px; margin-bottom: 8px; font-size: 11px; color: #475569; }
+.coverage-detail-list { display: grid; gap: 8px; }
+.coverage-worker-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #f1f5f9; }
+.coverage-worker-item:first-child { border-top: 0; }
+.coverage-worker-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.coverage-worker-name { margin: 0; font-size: 11px; color: #0f172a; }
+.coverage-worker-function { margin: 0; font-size: 10px; color: #64748b; }
 .current-week-icon.active {
   background: #eff6ff;
   border-color: #60a5fa;
