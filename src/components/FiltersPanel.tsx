@@ -4,6 +4,7 @@ import type { AppliedViewState, Function, Person, Role, ShiftLabelMode, TimeScal
 import { FilterFooter } from './filters/FilterFooter';
 import { FilterPill } from './filters/FilterPill';
 import { FilterSection } from './filters/FilterSection';
+import { TimeInput24 } from './TimeInput24';
 
 type Props = {
   roles: Role[];
@@ -22,8 +23,21 @@ const DEFAULT_VIEW_STATE: AppliedViewState = {
   searchText: '',
   selectedPersonId: null,
   roleIds: [],
-  functionIds: []
+  functionIds: [],
+  dayKeys: [],
+  timeRangeStart: '',
+  timeRangeEnd: ''
 };
+
+const DAY_FILTER_OPTIONS: Array<{ key: AppliedViewState['dayKeys'][number]; short: string }> = [
+  { key: 'mon', short: 'Lun' },
+  { key: 'tue', short: 'Mar' },
+  { key: 'wed', short: 'Mié' },
+  { key: 'thu', short: 'Jue' },
+  { key: 'fri', short: 'Vie' },
+  { key: 'sat', short: 'Sáb' },
+  { key: 'sun', short: 'Dom' }
+];
 
 const norm = (value: string) => value.trim().toLowerCase();
 
@@ -100,16 +114,17 @@ export const FiltersPanel = ({
     return counts;
   }, [peopleMatchingSearch, functions]);
 
-  const groupedFunctions = useMemo(() => {
-    const byRole: Record<string, Function[]> = {};
-    functions.forEach((fn) => {
-      byRole[fn.roleId] = byRole[fn.roleId] || [];
-      byRole[fn.roleId].push(fn);
-    });
-    return byRole;
-  }, [functions]);
-
   const visibleRoleIds = roleScope ? Array.from(roleScope) : roles.map((role) => role.id);
+  const roleRank = useMemo(() => new Map(roles.map((role, index) => [role.id, index])), [roles]);
+  const visibleFunctions = useMemo(() => (
+    functions
+      .filter((fn) => visibleRoleIds.includes(fn.roleId))
+      .sort((a, b) => {
+        const roleDiff = (roleRank.get(a.roleId) ?? Number.MAX_SAFE_INTEGER) - (roleRank.get(b.roleId) ?? Number.MAX_SAFE_INTEGER);
+        if (roleDiff !== 0) return roleDiff;
+        return a.nombre.localeCompare(b.nombre, 'es');
+      })
+  ), [functions, visibleRoleIds, roleRank]);
   const hasUnsavedChanges = JSON.stringify(draftState) !== JSON.stringify(appliedState);
 
   const toggleRole = (id: string) => {
@@ -123,6 +138,13 @@ export const FiltersPanel = ({
     setDraftState((prev) => ({
       ...prev,
       functionIds: prev.functionIds.includes(id) ? prev.functionIds.filter((item) => item !== id) : [...prev.functionIds, id]
+    }));
+  };
+
+  const toggleDay = (dayKey: AppliedViewState['dayKeys'][number]) => {
+    setDraftState((prev) => ({
+      ...prev,
+      dayKeys: prev.dayKeys.includes(dayKey) ? prev.dayKeys.filter((item) => item !== dayKey) : [...prev.dayKeys, dayKey]
     }));
   };
 
@@ -204,29 +226,50 @@ export const FiltersPanel = ({
 
                 <div className="sub-control">
                   <p>Función</p>
-                  <div className="function-groups">
-                    {visibleRoleIds.map((roleId) => {
-                      const role = roles.find((item) => item.id === roleId);
-                      const items = groupedFunctions[roleId] || [];
-                      if (items.length === 0) return null;
+                  <div className="pill-grid">
+                    {visibleFunctions.map((fn) => (
+                      <FilterPill
+                        key={fn.id}
+                        label={fn.nombre}
+                        count={functionCounts[fn.id] || 0}
+                        color={rolesById.get(fn.roleId)?.color}
+                        active={draftState.functionIds.includes(fn.id)}
+                        onClick={() => toggleFunction(fn.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="sub-control">
+                  <p>Día</p>
+                  <div className="pill-grid">
+                    {DAY_FILTER_OPTIONS.map((day) => {
+                      const active = draftState.dayKeys.includes(day.key);
                       return (
-                        <div key={roleId} className="function-group">
-                          <p>{role?.nombre ?? roleId}</p>
-                          <div className="pill-grid">
-                            {items.map((fn) => (
-                              <FilterPill
-                                key={fn.id}
-                                label={fn.nombre}
-                                count={functionCounts[fn.id] || 0}
-                                color={role?.color}
-                                active={draftState.functionIds.includes(fn.id)}
-                                onClick={() => toggleFunction(fn.id)}
-                              />
-                            ))}
-                          </div>
-                        </div>
+                        <button
+                          key={day.key}
+                          type="button"
+                          className={`filter-pill day-pill ${active ? 'active' : ''}`}
+                          onClick={() => toggleDay(day.key)}
+                        >
+                          <span>{day.short}</span>
+                        </button>
                       );
                     })}
+                  </div>
+                </div>
+
+                <div className="sub-control">
+                  <p>Rango horario</p>
+                  <div className="time-range-grid">
+                    <label>
+                      <span>Desde</span>
+                      <TimeInput24 value={draftState.timeRangeStart} onChange={(value) => setDraftState((prev) => ({ ...prev, timeRangeStart: value }))} />
+                    </label>
+                    <label>
+                      <span>Hasta</span>
+                      <TimeInput24 value={draftState.timeRangeEnd} onChange={(value) => setDraftState((prev) => ({ ...prev, timeRangeEnd: value }))} />
+                    </label>
                   </div>
                 </div>
               </FilterSection>

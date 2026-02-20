@@ -10,11 +10,46 @@ import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
 import { normalizeRoleColor } from './lib/roleColor';
 import { buildWeekScheduleBlocks } from './lib/scheduleBlocks';
+import { splitShiftByDay } from './lib/shiftSegments';
 import { clearIncompatibleWeekFunction, loadAll, loadViewStatePreference, removePersonCascade, saveAll, saveViewStatePreference, weekStartISOFromDate } from './lib/storage';
 import type { AppliedViewState } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
-const DEFAULT_VIEW_STATE: AppliedViewState = { timeScale: 60, shiftLabelMode: 'function', searchText: '', selectedPersonId: null, roleIds: [], functionIds: [] };
+const DEFAULT_VIEW_STATE: AppliedViewState = {
+  timeScale: 60,
+  shiftLabelMode: 'function',
+  searchText: '',
+  selectedPersonId: null,
+  roleIds: [],
+  functionIds: [],
+  dayKeys: [],
+  timeRangeStart: '',
+  timeRangeEnd: ''
+};
+
+const MINUTES_IN_DAY = 24 * 60;
+
+const timeToMinutes = (value: string): number | null => {
+  if (!value) return null;
+  const [hours, minutes] = value.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return (hours * 60) + minutes;
+};
+
+const buildRangeIntervals = (start: string, end: string): Array<[number, number]> => {
+  const startMin = timeToMinutes(start);
+  const endMin = timeToMinutes(end);
+  if (startMin === null && endMin === null) return [];
+  if (startMin !== null && endMin !== null) {
+    if (startMin === endMin) return [[0, MINUTES_IN_DAY]];
+    if (startMin < endMin) return [[startMin, endMin]];
+    return [[startMin, MINUTES_IN_DAY], [0, endMin]];
+  }
+  if (startMin !== null) return [[startMin, MINUTES_IN_DAY]];
+  return [[0, endMin ?? MINUTES_IN_DAY]];
+};
+
+const intersects = (aStart: number, aEnd: number, bStart: number, bEnd: number) => aStart < bEnd && bStart < aEnd;
 
 function App() {
   const [view, setView] = useState<'week' | 'schedules' | 'personal'>('week');
@@ -31,6 +66,12 @@ function App() {
     return roleOk && selectedPersonOk && searchOk;
   }).map((person) => person.id)), [state.people, appliedState]);
 
+  const rangeIntervals = useMemo(
+    () => buildRangeIntervals(appliedState.timeRangeStart, appliedState.timeRangeEnd),
+    [appliedState.timeRangeStart, appliedState.timeRangeEnd]
+  );
+  const selectedDays = useMemo(() => new Set(appliedState.dayKeys), [appliedState.dayKeys]);
+
   const weekScheduleBlocks = useMemo(() => buildWeekScheduleBlocks(
     weekStart,
     state.people,
@@ -40,10 +81,44 @@ function App() {
     state.personFunctionWeeks,
     state.overrides,
     appliedState.shiftLabelMode
-  ).filter((block) => filteredPersonIds.has(block.personId)), [weekStart, state, appliedState.shiftLabelMode, filteredPersonIds]);
+  ).filter((block) => {
+    if (!filteredPersonIds.has(block.personId)) return false;
+    if (appliedState.functionIds.length > 0 && !appliedState.functionIds.includes(block.functionId)) return false;
+
+    const segments = splitShiftByDay(block);
+
+    if (selectedDays.size > 0) {
+      const dayMatched = segments.some((segment) => {
+        const weekday = new Date(`${segment.dayKey}T00:00:00`).getDay();
+        const dayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][weekday] as AppliedViewState['dayKeys'][number];
+        return selectedDays.has(dayKey);
+      });
+      if (!dayMatched) return false;
+    }
+
+    if (rangeIntervals.length > 0) {
+      const timeMatched = segments.some((segment) => {
+        const start = new Date(segment.segStartISO);
+        const end = new Date(segment.segEndISO);
+        const segStart = (start.getHours() * 60) + start.getMinutes();
+        const segEndRaw = (end.getHours() * 60) + end.getMinutes();
+        const segEnd = segEndRaw === 0 && end.getTime() > start.getTime() ? MINUTES_IN_DAY : segEndRaw;
+        return rangeIntervals.some(([rangeStart, rangeEnd]) => intersects(segStart, segEnd, rangeStart, rangeEnd));
+      });
+      if (!timeMatched) return false;
+    }
+
+    return true;
+  }), [weekStart, state, appliedState.shiftLabelMode, appliedState.functionIds, filteredPersonIds, selectedDays, rangeIntervals]);
 
   const coverage = useMemo(() => calculateCoverage(weekStart, weekScheduleBlocks, state.roles, appliedState.timeScale, (block) => block.roleId), [weekStart, weekScheduleBlocks, state.roles, appliedState.timeScale]);
-  const hasActiveFilters = appliedState.searchText.trim().length > 0 || !!appliedState.selectedPersonId || appliedState.roleIds.length > 0 || appliedState.functionIds.length > 0;
+  const hasActiveFilters = appliedState.searchText.trim().length > 0
+    || !!appliedState.selectedPersonId
+    || appliedState.roleIds.length > 0
+    || appliedState.functionIds.length > 0
+    || appliedState.dayKeys.length > 0
+    || !!appliedState.timeRangeStart
+    || !!appliedState.timeRangeEnd;
 
   return (
     <div className="app-shell">
