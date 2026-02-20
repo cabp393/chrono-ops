@@ -27,6 +27,7 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
   const [search, setSearch] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [workerModalOpen, setWorkerModalOpen] = useState(false);
+  const [personDraft, setPersonDraft] = useState<{ nombre: string; roleId: string } | null>(null);
 
   const [draftWeekPlans, setDraftWeekPlans] = useState<PersonWeekPlan[]>(personWeekPlans);
   const [draftFunctionWeeks, setDraftFunctionWeeks] = useState<PersonFunctionWeek[]>(personFunctionWeeks);
@@ -38,13 +39,23 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
     setDraftOverrides(overrides);
   }, [personWeekPlans, personFunctionWeeks, overrides]);
 
-  const hasUnsavedChanges = !same(personWeekPlans, draftWeekPlans) || !same(personFunctionWeeks, draftFunctionWeeks) || !same(overrides, draftOverrides);
+  useEffect(() => {
+    if (!selectedPersonId) {
+      setPersonDraft(null);
+      return;
+    }
+    const selected = people.find((item) => item.id === selectedPersonId);
+    setPersonDraft(selected ? { nombre: selected.nombre, roleId: selected.roleId } : null);
+  }, [selectedPersonId, people]);
+
+  const selectedPerson = people.find((item) => item.id === selectedPersonId);
+  const personDraftChanged = !!selectedPerson && !!personDraft && (selectedPerson.nombre !== personDraft.nombre.trim() || selectedPerson.roleId !== personDraft.roleId);
+  const hasUnsavedChanges = !same(personWeekPlans, draftWeekPlans) || !same(personFunctionWeeks, draftFunctionWeeks) || !same(overrides, draftOverrides) || personDraftChanged;
   const hasInvalidOverrides = draftOverrides.some((item) => !isValidSlot({ start: item.start, end: item.end }));
   const hasInvalidTemplates = templates.some((template) => DAY_KEYS.some((dayKey) => !isValidSlot(template.days[dayKey])));
   const hasInvalidSlots = hasInvalidOverrides || hasInvalidTemplates;
 
   const weekStartISO = toISODate(weekStart);
-  const selectedPerson = people.find((item) => item.id === selectedPersonId);
   const selectedWeekPlan = useMemo(
     () => draftWeekPlans.find((item) => item.personId === selectedPersonId && item.weekStartISO === weekStartISO),
     [draftWeekPlans, selectedPersonId, weekStartISO]
@@ -59,6 +70,8 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
       setDraftWeekPlans(personWeekPlans);
       setDraftFunctionWeeks(personFunctionWeeks);
       setDraftOverrides(overrides);
+      const current = people.find((item) => item.id === personId);
+      setPersonDraft(current ? { nombre: current.nombre, roleId: current.roleId } : null);
     }
     setSelectedPersonId(personId);
   };
@@ -94,6 +107,7 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
     setDraftWeekPlans(personWeekPlans);
     setDraftFunctionWeeks(personFunctionWeeks);
     setDraftOverrides(overrides);
+    setPersonDraft(selectedPerson ? { nombre: selectedPerson.nombre, roleId: selectedPerson.roleId } : null);
   };
 
   const cancelEditing = () => {
@@ -132,13 +146,20 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
         onTemplateChange={(templateId) => upsertWeekPlan({ templateId })}
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
         onUpsertOverride={upsertOverride}
-        onUpdatePerson={onUpdatePerson}
+        onPersonDraftChange={setPersonDraft}
         onDeletePerson={(personId) => {
           onDeletePerson(personId);
           setSelectedPersonId(null);
+          setPersonDraft(null);
         }}
         onReset={cancelEditing}
-        onSave={() => !hasInvalidSlots && onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides })}
+        onSave={() => {
+          if (hasInvalidSlots) return;
+          if (selectedPerson && personDraft && personDraft.nombre.trim() && personDraft.roleId && personDraftChanged) {
+            onUpdatePerson({ ...selectedPerson, nombre: personDraft.nombre.trim(), roleId: personDraft.roleId });
+          }
+          onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides });
+        }}
       />
 
       {!selectedPersonId ? <footer className="schedule-footer schedule-footer-create">
