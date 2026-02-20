@@ -398,7 +398,7 @@ body.drawer-open { overflow: hidden; }
   border-radius: 10px;
   padding: 6px 8px;
   display: grid;
-  grid-template-columns: 32px 96px 96px;
+  grid-template-columns: 32px 96px 96px 30px;
   gap: 6px;
   align-items: center;
 }
@@ -413,6 +413,21 @@ body.drawer-open { overflow: hidden; }
 }
 .week-day-row.invalid {
   border-color: #fca5a5;
+}
+
+.week-day-action-placeholder {
+  width: 30px;
+  height: 30px;
+}
+
+button.subtle-primary {
+  border-color: #bfdbfe;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+button.subtle-primary:hover {
+  background: #dbeafe;
 }
 .schedules-layout.has-selection {
   padding-bottom: calc(68px + env(safe-area-inset-bottom));

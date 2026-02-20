@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Function, Person, PersonFunctionWeek, PersonWeekPlan, Role, ScheduleOverride, ScheduleTemplate } from '../../types';
-import { DAY_KEYS, isValidSlot, toISODate } from '../../lib/scheduleUtils';
+import { DAY_KEYS, getDayKey, isValidSlot, toISODate } from '../../lib/scheduleUtils';
 import { PeopleList } from './PeopleList';
 import { PersonScheduleEditor } from './PersonScheduleEditor';
 import { WorkerModal } from './WorkerModal';
@@ -96,11 +96,25 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
 
   const upsertOverride = (dateISO: string, start: string | null, end: string | null) => {
     if (!selectedPersonId || !selectedWeekPlan) return;
+    const selectedTemplate = templates.find((item) => item.id === selectedWeekPlan.templateId);
+    const dayDate = new Date(`${dateISO}T00:00:00`);
+    const dayKey = getDayKey(dayDate);
+    const templateSlot = selectedTemplate?.days[dayKey] ?? { start: null, end: null };
+
     setDraftOverrides((prev) => {
       const existing = prev.find((item) => item.personId === selectedPersonId && item.dateISO === dateISO);
+      const matchesTemplate = start === templateSlot.start && end === templateSlot.end;
+      if (matchesTemplate) {
+        return prev.filter((item) => !(item.personId === selectedPersonId && item.dateISO === dateISO));
+      }
       if (existing) return prev.map((item) => item.id === existing.id ? { ...item, start, end } : item);
       return [...prev, { id: crypto.randomUUID(), personId: selectedPersonId, dateISO, start, end }];
     });
+  };
+
+  const clearOverride = (dateISO: string) => {
+    if (!selectedPersonId) return;
+    setDraftOverrides((prev) => prev.filter((item) => !(item.personId === selectedPersonId && item.dateISO === dateISO)));
   };
 
   const resetDraft = () => {
@@ -119,10 +133,10 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
     <main className={`dashboard-layout schedules-layout ${selectedPersonId ? 'has-selection' : ''}`}>
       <PeopleList
         people={people}
+        roles={roles}
         functions={functions}
         templates={templates}
         personWeekPlans={draftWeekPlans}
-        personFunctionWeeks={draftFunctionWeeks}
         overrides={draftOverrides}
         weekStart={weekStart}
         selectedPersonId={selectedPersonId}
@@ -146,6 +160,7 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
         onTemplateChange={(templateId) => upsertWeekPlan({ templateId })}
         onFunctionChange={(functionId) => upsertWeekPlan({ functionId })}
         onUpsertOverride={upsertOverride}
+        onClearOverride={clearOverride}
         onPersonDraftChange={setPersonDraft}
         onDeletePerson={(personId) => {
           onDeletePerson(personId);
@@ -159,6 +174,8 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
             onUpdatePerson({ ...selectedPerson, nombre: personDraft.nombre.trim(), roleId: personDraft.roleId });
           }
           onChange({ templates, personWeekPlans: draftWeekPlans, personFunctionWeeks: draftFunctionWeeks, overrides: draftOverrides });
+          setSelectedPersonId(null);
+          setPersonDraft(null);
         }}
       />
 

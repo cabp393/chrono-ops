@@ -17,13 +17,14 @@ type Props = {
   onTemplateChange: (templateId: string | null) => void;
   onFunctionChange: (functionId: string | null) => void;
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
+  onClearOverride: (dateISO: string) => void;
   onPersonDraftChange: (draft: { nombre: string; roleId: string }) => void;
   onDeletePerson: (personId: string) => void;
   onReset: () => void;
   onSave: () => void;
 };
 
-export const PersonScheduleEditor = ({ person, roles, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onUpsertOverride, onPersonDraftChange, onDeletePerson, onReset, onSave }: Props) => {
+export const PersonScheduleEditor = ({ person, roles, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onUpsertOverride, onClearOverride, onPersonDraftChange, onDeletePerson, onReset, onSave }: Props) => {
   const [workerExpanded, setWorkerExpanded] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [draftName, setDraftName] = useState(person?.nombre ?? '');
@@ -43,6 +44,32 @@ export const PersonScheduleEditor = ({ person, roles, functions, templates, week
 
   return (
     <section className="schedule-editor-col">
+      <section className="card template-assignment-card">
+        <h3>Asignación semanal</h3>
+        {!weekPlan ? <p className="empty-state">Semana sin asignación. Selecciona función y plantilla, luego guarda cambios.</p> : null}
+        <div className="template-assignment-row compact-two">
+          <select value={functionWeek?.functionId ?? ''} onChange={(event) => onFunctionChange(event.target.value || null)}>
+            <option value="">Sin función</option>
+            {roleFunctions.map((item) => <option value={item.id} key={item.id}>{item.nombre}</option>)}
+          </select>
+          {roleFunctions.length === 0 ? <p className="empty-state">No hay funciones para este rol. Créelas en la pestaña Personal.</p> : null}
+          <select value={weekPlan?.templateId ?? ''} onChange={(event) => onTemplateChange(event.target.value || null)}>
+            <option value="">Sin plantilla</option>
+            {templates.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
+          </select>
+        </div>
+      </section>
+
+      <WeekScheduleTable
+        personId={person.id}
+        weekStart={weekStart}
+        template={selectedTemplate}
+        overrides={overrides}
+        weekAssigned={!!weekPlan}
+        onUpsertOverride={onUpsertOverride}
+        onClearOverride={onClearOverride}
+      />
+
       <section className="card schedule-worker-card">
         <button className="week-section-toggle" onClick={() => setWorkerExpanded((current) => !current)} aria-label="Expandir sección trabajador">
           <span>Trabajador</span>
@@ -73,24 +100,6 @@ export const PersonScheduleEditor = ({ person, roles, functions, templates, week
           </div>
         </div> : null}
       </section>
-
-      <section className="card template-assignment-card">
-        <h3>Asignación semanal</h3>
-        {!weekPlan ? <p className="empty-state">Semana sin asignación. Selecciona función y plantilla, luego guarda cambios.</p> : null}
-        <div className="template-assignment-row compact-two">
-          <select value={functionWeek?.functionId ?? ''} onChange={(event) => onFunctionChange(event.target.value || null)}>
-            <option value="">Sin función</option>
-            {roleFunctions.map((item) => <option value={item.id} key={item.id}>{item.nombre}</option>)}
-          </select>
-          {roleFunctions.length === 0 ? <p className="empty-state">No hay funciones para este rol. Créelas en la pestaña Personal.</p> : null}
-          <select value={weekPlan?.templateId ?? ''} onChange={(event) => onTemplateChange(event.target.value || null)}>
-            <option value="">Sin plantilla</option>
-            {templates.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
-          </select>
-        </div>
-      </section>
-
-      <WeekScheduleTable personId={person.id} weekStart={weekStart} template={selectedTemplate} overrides={overrides} weekAssigned={!!weekPlan} onUpsertOverride={onUpsertOverride} />
 
       {hasInvalidSlots ? <p className="error schedule-inline-error">Corrige horarios inválidos antes de guardar.</p> : null}
 
