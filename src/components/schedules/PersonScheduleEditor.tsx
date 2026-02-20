@@ -17,13 +17,13 @@ type Props = {
   onTemplateChange: (templateId: string | null) => void;
   onFunctionChange: (functionId: string | null) => void;
   onUpsertOverride: (dateISO: string, start: string | null, end: string | null) => void;
-  onUpdatePerson: (person: Person) => void;
+  onPersonDraftChange: (draft: { nombre: string; roleId: string }) => void;
   onDeletePerson: (personId: string) => void;
   onReset: () => void;
   onSave: () => void;
 };
 
-export const PersonScheduleEditor = ({ person, roles, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onUpsertOverride, onUpdatePerson, onDeletePerson, onReset, onSave }: Props) => {
+export const PersonScheduleEditor = ({ person, roles, functions, templates, weekPlan, functionWeek, overrides, weekStart, hasUnsavedChanges, hasInvalidSlots, onTemplateChange, onFunctionChange, onUpsertOverride, onPersonDraftChange, onDeletePerson, onReset, onSave }: Props) => {
   const [workerExpanded, setWorkerExpanded] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [draftName, setDraftName] = useState(person?.nombre ?? '');
@@ -38,7 +38,7 @@ export const PersonScheduleEditor = ({ person, roles, functions, templates, week
 
   if (!person) return null;
 
-  const roleFunctions = functions.filter((item) => item.roleId === person.roleId);
+  const roleFunctions = functions.filter((item) => item.roleId === draftRoleId);
   const selectedTemplate = templates.find((item) => item.id === weekPlan?.templateId);
 
   return (
@@ -49,21 +49,27 @@ export const PersonScheduleEditor = ({ person, roles, functions, templates, week
           {workerExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         {workerExpanded ? <div className="worker-edit-grid">
-          <input value={draftName} onChange={(event) => setDraftName(event.target.value)} placeholder="Nombre" />
-          <select value={draftRoleId} onChange={(event) => setDraftRoleId(event.target.value)}>
+          <input
+            value={draftName}
+            onChange={(event) => {
+              const nombre = event.target.value;
+              setDraftName(nombre);
+              onPersonDraftChange({ nombre, roleId: draftRoleId });
+            }}
+            placeholder="Nombre"
+          />
+          <select
+            value={draftRoleId}
+            onChange={(event) => {
+              const roleId = event.target.value;
+              setDraftRoleId(roleId);
+              onPersonDraftChange({ nombre: draftName, roleId });
+            }}
+          >
             {roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
           </select>
           <div className="worker-card-actions">
-            <button
-              className="icon-btn"
-              onClick={() => onUpdatePerson({ ...person, nombre: draftName.trim(), roleId: draftRoleId })}
-              disabled={!draftName.trim() || !draftRoleId}
-              aria-label="Guardar trabajador"
-              title="Guardar trabajador"
-            >
-              <Save size={14} />
-            </button>
-            <button className="danger" onClick={() => setConfirmDeleteOpen(true)}><Trash2 size={14} />Eliminar trabajador</button>
+            <button className="icon-btn danger-icon" onClick={() => setConfirmDeleteOpen(true)} aria-label="Eliminar trabajador" title="Eliminar trabajador"><Trash2 size={14} /></button>
           </div>
         </div> : null}
       </section>

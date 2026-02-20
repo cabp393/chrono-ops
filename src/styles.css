@@ -69,7 +69,7 @@ select, input {
 .coverage-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .coverage-card p, .sub-control > p, .function-group > p, .time-axis > div { margin: 0; font-size: 12px; color: #64748b; }
 .segmented { display: inline-flex; border: 1px solid #dbe3ef; border-radius: 9px; padding: 2px; background: #f8fafc; }
-.segmented button { border: 0; padding: 5px 9px; font-size: 13px; background: transparent; border-radius: 7px; }
+.segmented button { border: 0; padding: 5px 9px; font-size: 10px; background: transparent; border-radius: 7px; }
 .segmented button.active { background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .chip {
@@ -229,9 +229,9 @@ select, input {
   border-color: #dbe4f0;
   padding: 8px 32px 8px 30px;
   background: #fff;
-  font-size: 14px;
+  font-size: 10px;
 }
-.search-icon { position: absolute; left: 10px; color: #64748b; font-size: 14px; }
+.search-icon { position: absolute; left: 10px; color: #64748b; font-size: 11px; }
 .clear-search {
   position: absolute;
   right: 6px;
@@ -409,13 +409,13 @@ body.drawer-open { overflow: hidden; }
   align-items: center;
 }
 .week-day-row.compact strong {
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 600;
 }
 .week-day-row.compact input[type="time"] {
   min-height: 30px;
   padding: 4px 6px;
-  font-size: 13px;
+  font-size: 10px;
 }
 .week-day-row.invalid {
   border-color: #fca5a5;
@@ -462,6 +462,7 @@ body.drawer-open { overflow: hidden; }
 
 
 .templates-modal { width: min(920px, 96vw); max-height: 88vh; overflow: auto; }
+.compact-template-modal { width: min(420px, 94vw); }
 .templates-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .templates-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 10px; }
 .template-list { display: grid; align-content: start; gap: 6px; }
@@ -469,9 +470,12 @@ body.drawer-open { overflow: hidden; }
 .template-item.active { border-color: #93c5fd; background: #eff6ff; }
 .template-editor { display: grid; gap: 8px; }
 .template-editor-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.template-editor-head.simple { grid-template-columns: minmax(0, 1fr); }
 .template-quick-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .template-days { display: grid; gap: 6px; }
 .template-day-row { display: grid; grid-template-columns: 48px 98px 98px auto auto; gap: 6px; align-items: center; }
+.template-days.compact-days { gap: 4px; }
+.template-day-line { background: #f8fafc; }
 
 @media (max-width: 960px) {
   .schedules-layout { grid-template-columns: minmax(0, 1fr); }
@@ -503,7 +507,7 @@ body.drawer-open { overflow: hidden; }
 
 .worker-card-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 
@@ -531,6 +535,19 @@ button.danger-icon {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.personal-section {
+  background: #fcfdff;
+}
+
+.roles-section {
+  border-color: #dde5f0;
+}
+
+.templates-section {
+  border-color: #e2e8f0;
+  background: #fafcff;
+}
+
 .section-head {
   display: flex;
   align-items: center;
@@ -551,6 +568,7 @@ button.danger-icon {
   padding: 8px;
   display: grid;
   gap: 6px;
+  background: #f8fafc;
 }
 
 .role-row,
@@ -564,6 +582,22 @@ button.danger-icon {
 
 .function-tree-list {
   padding-left: 12px;
+  border-left: 1px solid #e2e8f0;
+  margin-left: 2px;
+}
+
+.function-row {
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  padding: 5px 6px;
+}
+
+.template-compact-item {
+  border: 1px solid #e7edf6;
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: #f8fafc;
 }
 
 .function-row span,

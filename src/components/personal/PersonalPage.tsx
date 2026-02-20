@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Check, Copy, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { Function, Role, ScheduleTemplate } from '../../types';
 import { createTemplate } from '../../lib/scheduleUtils';
 import { TemplateModal } from '../schedules/TemplateModal';
@@ -31,6 +31,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
   const [modal, setModal] = useState<ModalState>(null);
   const [nameDraft, setNameDraft] = useState('');
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templateToEditId, setTemplateToEditId] = useState<string | null>(null);
 
   const openModal = (next: ModalState, value = '') => {
     setModal(next);
@@ -39,7 +40,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
 
   return (
     <main className="dashboard-layout personal-layout">
-      <section className="card">
+      <section className="card personal-section roles-section">
         <div className="section-head">
           <h3>Roles y funciones</h3>
           <button className="icon-btn" onClick={() => openModal({ type: 'create-role' })} aria-label="Crear rol" title="Crear rol"><Plus size={14} /></button>
@@ -52,7 +53,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
                 <div className="tree-actions">
                   <button className="icon-btn" onClick={() => openModal({ type: 'create-function', roleId: role.id })} aria-label="Agregar función" title="Agregar función"><Plus size={14} /></button>
                   <button className="icon-btn" onClick={() => openModal({ type: 'edit-role', roleId: role.id, initial: role.nombre }, role.nombre)} aria-label="Editar rol" title="Editar rol"><Pencil size={14} /></button>
-                  <button className="icon-btn" onClick={() => openModal({ type: 'delete-role', roleId: role.id })} aria-label="Eliminar rol" title="Eliminar rol"><Trash2 size={14} /></button>
+                  <button className="icon-btn danger-icon" onClick={() => openModal({ type: 'delete-role', roleId: role.id })} aria-label="Eliminar rol" title="Eliminar rol"><Trash2 size={14} /></button>
                 </div>
               </div>
               <div className="function-tree-list">
@@ -61,7 +62,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
                     <span>{fn.nombre}</span>
                     <div className="tree-actions">
                       <button className="icon-btn" onClick={() => openModal({ type: 'edit-function', functionId: fn.id, initial: fn.nombre }, fn.nombre)} aria-label="Editar función" title="Editar función"><Pencil size={14} /></button>
-                      <button className="icon-btn" onClick={() => openModal({ type: 'delete-function', functionId: fn.id })} aria-label="Eliminar función" title="Eliminar función"><Trash2 size={14} /></button>
+                      <button className="icon-btn danger-icon" onClick={() => openModal({ type: 'delete-function', functionId: fn.id })} aria-label="Eliminar función" title="Eliminar función"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -71,7 +72,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
         </div>
       </section>
 
-      <section className="card">
+      <section className="card personal-section templates-section">
         <div className="section-head">
           <h3>Plantillas de turnos</h3>
           <button className="icon-btn" onClick={() => onSaveTemplates([...templates, createTemplate(`Nueva plantilla ${templates.length + 1}`)])} aria-label="Crear plantilla" title="Crear plantilla"><Plus size={14} /></button>
@@ -81,8 +82,30 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
             <div className="template-compact-item" key={template.id}>
               <span>{template.name}</span>
               <div className="tree-actions">
-                <button className="icon-btn" onClick={() => setTemplateModalOpen(true)} aria-label="Editar plantilla" title="Editar plantilla"><Pencil size={14} /></button>
-                <button className="icon-btn" onClick={() => onSaveTemplates(templates.filter((item) => item.id !== template.id))} aria-label="Eliminar plantilla" title="Eliminar plantilla"><Trash2 size={14} /></button>
+                <button
+                  className="icon-btn"
+                  onClick={() => {
+                    setTemplateToEditId(template.id);
+                    setTemplateModalOpen(true);
+                  }}
+                  aria-label="Editar plantilla"
+                  title="Editar plantilla"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  className="icon-btn"
+                  onClick={() => {
+                    const copyName = `${template.name} (copia)`;
+                    const duplicate = { ...template, id: crypto.randomUUID(), name: copyName, days: { mon: { ...template.days.mon }, tue: { ...template.days.tue }, wed: { ...template.days.wed }, thu: { ...template.days.thu }, fri: { ...template.days.fri }, sat: { ...template.days.sat }, sun: { ...template.days.sun } } };
+                    onSaveTemplates([...templates, duplicate]);
+                  }}
+                  aria-label="Duplicar plantilla"
+                  title="Duplicar plantilla"
+                >
+                  <Copy size={14} />
+                </button>
+                <button className="icon-btn danger-icon" onClick={() => onSaveTemplates(templates.filter((item) => item.id !== template.id))} aria-label="Eliminar plantilla" title="Eliminar plantilla"><Trash2 size={14} /></button>
               </div>
             </div>
           ))}
@@ -104,7 +127,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
 
           <div className="modal-actions">
             <button className="icon-btn" onClick={() => setModal(null)} aria-label="Cancelar" title="Cancelar"><X size={14} /></button>
-            <button className="icon-btn primary" onClick={() => {
+            <button className={`icon-btn ${modal.type.includes('delete') ? 'danger-icon' : 'primary'}`} onClick={() => {
               if (modal.type === 'create-role' && nameDraft.trim()) onCreateRole(nameDraft.trim());
               if (modal.type === 'edit-role' && nameDraft.trim()) onRenameRole(modal.roleId, nameDraft.trim());
               if (modal.type === 'create-function' && nameDraft.trim()) onCreateFunction(modal.roleId, nameDraft.trim());
@@ -113,7 +136,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
               if (modal.type === 'delete-function' && !onDeleteFunction(modal.functionId)) window.alert('La función está en uso en Horarios.');
               setModal(null);
             }} aria-label="Confirmar" title="Confirmar">
-              <Check size={14} />
+              {modal.type.includes('delete') ? <Trash2 size={14} /> : <Check size={14} />}
             </button>
           </div>
         </section>
@@ -122,7 +145,11 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
       <TemplateModal
         open={templateModalOpen}
         templates={templates}
-        onClose={() => setTemplateModalOpen(false)}
+        selectedTemplateId={templateToEditId}
+        onClose={() => {
+          setTemplateModalOpen(false);
+          setTemplateToEditId(null);
+        }}
         onSave={onSaveTemplates}
       />
     </main>
