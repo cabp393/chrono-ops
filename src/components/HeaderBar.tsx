@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SlidersHorizontal, Target } from 'lucide-react';
 
 type ViewMode = 'week' | 'schedules' | 'personal';
 
@@ -9,6 +9,7 @@ type Props = {
   onNextWeek: () => void;
   onCurrentWeek: () => void;
   onOpenFilters: () => void;
+  hasActiveFilters: boolean;
   view: ViewMode;
   onChangeView: (view: ViewMode) => void;
 };
@@ -20,6 +21,7 @@ export const HeaderBar = ({
   onNextWeek,
   onCurrentWeek,
   onOpenFilters,
+  hasActiveFilters,
   view,
   onChangeView
 }: Props) => (
@@ -34,7 +36,12 @@ export const HeaderBar = ({
         </div>
       </div>
       <div className="header-actions">
-        {view === 'week' ? <button className="ghost" onClick={onOpenFilters}>Filtros</button> : null}
+        {view === 'week' ? (
+          <button className="icon-btn ghost filter-toggle-btn" onClick={onOpenFilters} aria-label="Abrir filtros" title="Filtros">
+            <SlidersHorizontal size={15} />
+            {hasActiveFilters ? <span className="filter-active-dot" aria-hidden="true" /> : null}
+          </button>
+        ) : null}
       </div>
     </div>
 

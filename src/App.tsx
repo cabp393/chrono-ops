@@ -8,6 +8,7 @@ import { PersonalPage } from './components/personal/PersonalPage';
 import { SchedulesPage } from './components/schedules/SchedulesPage';
 import { calculateCoverage } from './lib/coverageCalc';
 import { addDays, formatWeekRange, startOfWeekMonday } from './lib/dateUtils';
+import { normalizeRoleColor } from './lib/roleColor';
 import { buildWeekScheduleBlocks } from './lib/scheduleBlocks';
 import { clearIncompatibleWeekFunction, loadAll, loadViewStatePreference, removePersonCascade, saveAll, saveViewStatePreference, weekStartISOFromDate } from './lib/storage';
 import type { AppliedViewState } from './types';
@@ -20,7 +21,7 @@ function App() {
   const [weekStart, setWeekStart] = useState(todayWeekStart);
   const [state, setState] = useState(() => loadAll(todayWeekStart));
   const [appliedState, setAppliedState] = useState<AppliedViewState>(() => loadViewStatePreference());
-  const [focusBlock, setFocusBlock] = useState<{ dayIndex: number; blockIndex: number } | null>(null);
+  const focusBlock = null;
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filteredPersonIds = useMemo(() => new Set(state.people.filter((person) => {
@@ -42,6 +43,7 @@ function App() {
   ).filter((block) => filteredPersonIds.has(block.personId)), [weekStart, state, appliedState.shiftLabelMode, filteredPersonIds]);
 
   const coverage = useMemo(() => calculateCoverage(weekStart, weekScheduleBlocks, state.roles, appliedState.timeScale, (block) => block.roleId), [weekStart, weekScheduleBlocks, state.roles, appliedState.timeScale]);
+  const hasActiveFilters = appliedState.searchText.trim().length > 0 || !!appliedState.selectedPersonId || appliedState.roleIds.length > 0 || appliedState.functionIds.length > 0;
 
   return (
     <div className="app-shell">
@@ -52,12 +54,13 @@ function App() {
         onCurrentWeek={() => setWeekStart(todayWeekStart)}
         onNextWeek={() => setWeekStart(addDays(weekStart, 7))}
         onOpenFilters={() => setFiltersOpen(true)}
+        hasActiveFilters={hasActiveFilters}
         view={view}
         onChangeView={setView}
       />
 
       {view === 'week' ? (
-        <main className="dashboard-layout"><section className="main-column"><CoverageCard roles={state.roles} functions={state.functions} scheduleBlocks={weekScheduleBlocks} weekStart={weekStart} scale={appliedState.timeScale} activePeople={new Set(weekScheduleBlocks.map((b) => b.personId)).size} onFocusBlock={(dayIndex, blockIndex) => setFocusBlock({ dayIndex, blockIndex })} /><WeekGrid weekStart={weekStart} blocks={weekScheduleBlocks} roles={state.roles} scale={appliedState.timeScale} coverageTotals={Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]))} focusBlock={focusBlock} shiftLabelMode={appliedState.shiftLabelMode} /></section></main>
+        <main className="dashboard-layout"><section className="main-column"><CoverageCard roles={state.roles} functions={state.functions} scheduleBlocks={weekScheduleBlocks} weekStart={weekStart} scale={appliedState.timeScale} activePeople={new Set(weekScheduleBlocks.map((b) => b.personId)).size} /><WeekGrid weekStart={weekStart} blocks={weekScheduleBlocks} roles={state.roles} scale={appliedState.timeScale} coverageTotals={Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]))} focusBlock={focusBlock} shiftLabelMode={appliedState.shiftLabelMode} /></section></main>
       ) : null}
 
       {view === 'schedules' ? <SchedulesPage
@@ -89,12 +92,12 @@ function App() {
         templates={state.templates}
         onSaveTemplates={(templates) => setState(saveAll({ ...state, templates }))}
         onCreateRole={(name, color) => {
-          const role = { id: crypto.randomUUID(), nombre: name, color };
+          const role = { id: crypto.randomUUID(), nombre: name, color: normalizeRoleColor(color) };
           const next = saveAll({ ...state, roles: [...state.roles, role] });
           setState(next);
           return role.id;
         }}
-        onRenameRole={(roleId, name) => setState(saveAll({ ...state, roles: state.roles.map((role) => role.id === roleId ? { ...role, nombre: name } : role) }))}
+        onRenameRole={(roleId, name, color) => setState(saveAll({ ...state, roles: state.roles.map((role) => role.id === roleId ? { ...role, nombre: name, color: normalizeRoleColor(color) } : role) }))}
         onDeleteRole={(roleId) => {
           if (state.people.some((person) => person.roleId === roleId)) return false;
           const next = saveAll({ ...state, roles: state.roles.filter((role) => role.id !== roleId), functions: state.functions.filter((fn) => fn.roleId !== roleId) });

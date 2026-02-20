@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Check, Copy, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { Function, Role, ScheduleTemplate } from '../../types';
+import { normalizeRoleColor } from '../../lib/roleColor';
 import { createTemplate } from '../../lib/scheduleUtils';
 import { TemplateModal } from '../schedules/TemplateModal';
 
@@ -10,7 +12,7 @@ type Props = {
   templates: ScheduleTemplate[];
   onSaveTemplates: (templates: ScheduleTemplate[]) => void;
   onCreateRole: (name: string, color?: string) => string;
-  onRenameRole: (roleId: string, name: string) => void;
+  onRenameRole: (roleId: string, name: string, color?: string) => void;
   onDeleteRole: (roleId: string) => boolean;
   onCreateFunction: (roleId: string, name: string) => void;
   onRenameFunction: (functionId: string, name: string) => void;
@@ -30,12 +32,21 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
   const groupedFunctions = useMemo(() => new Map(roles.map((role) => [role.id, functions.filter((fn) => fn.roleId === role.id)])), [roles, functions]);
   const [modal, setModal] = useState<ModalState>(null);
   const [nameDraft, setNameDraft] = useState('');
+  const [roleColorDraft, setRoleColorDraft] = useState('#60a5fa');
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templateToEditId, setTemplateToEditId] = useState<string | null>(null);
 
   const openModal = (next: ModalState, value = '') => {
     setModal(next);
     setNameDraft(value);
+    if (next?.type === 'edit-role') {
+      const role = roles.find((item) => item.id === next.roleId);
+      setRoleColorDraft(normalizeRoleColor(role?.color));
+      return;
+    }
+    if (next?.type === 'create-role') {
+      setRoleColorDraft('#60a5fa');
+    }
   };
 
   return (
@@ -47,7 +58,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
         </div>
         <div className="role-tree">
           {roles.map((role) => (
-            <div className="role-tree-item" key={role.id}>
+            <div className="role-tree-item" key={role.id} style={{ '--role-color': normalizeRoleColor(role.color) } as CSSProperties}>
               <div className="role-row">
                 <strong>{role.nombre}</strong>
                 <div className="tree-actions">
@@ -123,13 +134,23 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
             {modal.type === 'delete-function' ? 'Eliminar función' : null}
           </h3>
 
-          {modal.type.includes('delete') ? <p className="empty-state">Confirma la acción para continuar.</p> : <input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="Nombre" />}
+          {modal.type.includes('delete') ? <p className="empty-state">Confirma la acción para continuar.</p> : (
+            <>
+              <input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} placeholder="Nombre" />
+              {(modal.type === 'create-role' || modal.type === 'edit-role') ? (
+                <label className="role-color-field">
+                  Color del rol
+                  <input type="color" value={roleColorDraft} onChange={(event) => setRoleColorDraft(normalizeRoleColor(event.target.value))} aria-label="Color del rol" />
+                </label>
+              ) : null}
+            </>
+          )}
 
           <div className="modal-actions">
             <button className="icon-btn" onClick={() => setModal(null)} aria-label="Cancelar" title="Cancelar"><X size={14} /></button>
             <button className={`icon-btn ${modal.type.includes('delete') ? 'danger-icon' : 'primary'}`} onClick={() => {
-              if (modal.type === 'create-role' && nameDraft.trim()) onCreateRole(nameDraft.trim());
-              if (modal.type === 'edit-role' && nameDraft.trim()) onRenameRole(modal.roleId, nameDraft.trim());
+              if (modal.type === 'create-role' && nameDraft.trim()) onCreateRole(nameDraft.trim(), roleColorDraft);
+              if (modal.type === 'edit-role' && nameDraft.trim()) onRenameRole(modal.roleId, nameDraft.trim(), roleColorDraft);
               if (modal.type === 'create-function' && nameDraft.trim()) onCreateFunction(modal.roleId, nameDraft.trim());
               if (modal.type === 'edit-function' && nameDraft.trim()) onRenameFunction(modal.functionId, nameDraft.trim());
               if (modal.type === 'delete-role' && !onDeleteRole(modal.roleId)) window.alert('Reasigna trabajadores antes de eliminar');
