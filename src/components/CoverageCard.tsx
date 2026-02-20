@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatDayHeader, formatHour } from '../lib/dateUtils';
 import type { Function, Role, ScheduleBlock, TimeScale } from '../types';
 
 type WeekBlock = {
@@ -15,9 +14,7 @@ type WeekBlock = {
 
 type SampledBar = {
   value: number;
-  dayIndex: number;
-  blockIndex: number;
-  sourceBlocks: WeekBlock[];
+  key: string;
 };
 
 type HeatbarRowProps = {
@@ -25,7 +22,6 @@ type HeatbarRowProps = {
   color: string;
   maxValue: number;
   valueFromBlock: (block: WeekBlock) => number;
-  onSelect: (bar: SampledBar) => void;
 };
 
 type Props = {
@@ -35,7 +31,6 @@ type Props = {
   weekStart: Date;
   scale: TimeScale;
   activePeople: number;
-  onFocusBlock: (dayIndex: number, blockIndex: number) => void;
 };
 
 const BAR_WIDTH = 3;
@@ -47,9 +42,7 @@ const sampleWeekBlocks = (blocks: WeekBlock[], barsCount: number, valueFromBlock
   if (blocks.length <= barsCount) {
     return blocks.map((block) => ({
       value: valueFromBlock(block),
-      dayIndex: block.dayIndex,
-      blockIndex: block.blockIndex,
-      sourceBlocks: [block]
+      key: `${block.dayIndex}-${block.blockIndex}`
     }));
   }
 
@@ -63,16 +56,14 @@ const sampleWeekBlocks = (blocks: WeekBlock[], barsCount: number, valueFromBlock
 
     sampled.push({
       value: avg,
-      dayIndex: middle.dayIndex,
-      blockIndex: middle.blockIndex,
-      sourceBlocks: chunk
+      key: `${middle.dayIndex}-${middle.blockIndex}`
     });
   }
 
   return sampled;
 };
 
-const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelect }: HeatbarRowProps) => {
+const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock }: HeatbarRowProps) => {
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [barsCount, setBarsCount] = useState(() => blocks.length || 1);
 
@@ -99,8 +90,8 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelect }: Heatb
   return (
     <div className="heatbar-line" ref={rowRef}>
       {bars.map((bar, index) => (
-        <button
-          key={`${bar.dayIndex}-${bar.blockIndex}-${index}`}
+        <span
+          key={`${bar.key}-${index}`}
           className="heatbar-segment"
           style={{
             flex: '1 1 0',
@@ -108,18 +99,14 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelect }: Heatb
             opacity: bar.value === 0 ? 0.1 : 0.15 + (bar.value / Math.max(maxValue, 1)) * 0.85,
             backgroundColor: color
           }}
-          onClick={() => onSelect(bar)}
         />
       ))}
     </div>
   );
 };
 
-export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scale, activePeople, onFocusBlock }: Props) => {
+export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scale, activePeople }: Props) => {
   const [view, setView] = useState<'role' | 'function'>('role');
-  const [popover, setPopover] = useState<{ title: string; details: string } | null>(null);
-
-  const functionById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
 
   const weekBlocks = useMemo(() => {
     const totalBlocks = (24 * 60) / scale;
@@ -179,28 +166,6 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
     }));
   }, [scheduleBlocks, weekStart, scale]);
 
-  const roleTotals = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const seen = new Set<string>();
-    scheduleBlocks.forEach((block) => {
-      if (seen.has(block.personId)) return;
-      seen.add(block.personId);
-      counts[block.roleId] = (counts[block.roleId] || 0) + 1;
-    });
-    return counts;
-  }, [scheduleBlocks]);
-
-  const functionTotals = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const seen = new Set<string>();
-    scheduleBlocks.forEach((block) => {
-      if (seen.has(block.personId)) return;
-      seen.add(block.personId);
-      counts[block.functionId] = (counts[block.functionId] || 0) + 1;
-    });
-    return counts;
-  }, [scheduleBlocks]);
-
   const groupedFunctions = useMemo(() => {
     const byRole: Record<string, Function[]> = {};
     functions.forEach((fn) => {
@@ -209,17 +174,6 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
     });
     return byRole;
   }, [functions]);
-
-  const roleById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
-
-  const showPopover = (bar: SampledBar, entityName: string, value: number, roleName?: string) => {
-    const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
-    setPopover({
-      title: `${entityName} · ${formatDayHeader(source.dayDate)} · ${formatHour(source.start)}-${formatHour(source.end)}`,
-      details: `Cobertura: ${Math.round(value)} personas${roleName ? ` · Rol: ${roleName}` : ''}`
-    });
-    onFocusBlock(bar.dayIndex, bar.blockIndex);
-  };
 
   return (
     <section className="card coverage-card">
@@ -236,13 +190,6 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
 
       {view === 'role' ? (
         <>
-          <div className="chip-row">
-            {roles.map((role) => (
-              <span key={role.id} className="chip" style={{ borderColor: role.color, color: role.color }}>
-                {role.nombre}: {roleTotals[role.id] || 0}
-              </span>
-            ))}
-          </div>
           <div className="coverage-rows">
             {roles.map((role) => {
               const rowMax = Math.max(...weekBlocks.map((block) => block.byRole[role.id] || 0), 1);
@@ -254,10 +201,6 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
                     color={role.color || '#60a5fa'}
                     maxValue={rowMax}
                     valueFromBlock={(block) => block.byRole[role.id] || 0}
-                    onSelect={(bar) => {
-                      const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
-                      showPopover(bar, role.nombre, source.byRole[role.id] || 0);
-                    }}
                   />
                 </div>
               );
@@ -266,13 +209,6 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
         </>
       ) : (
         <>
-          <div className="chip-row">
-            {roles.flatMap((role) => (groupedFunctions[role.id] || []).map((fn) => (
-              <span key={fn.id} className="chip" style={{ borderColor: role.color, color: role.color }}>
-                {fn.nombre}: {functionTotals[fn.id] || 0}
-              </span>
-            )))}
-          </div>
           <div className="coverage-rows">
             {roles.flatMap((role) => (groupedFunctions[role.id] || []).map((fn) => {
               const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
@@ -284,24 +220,12 @@ export const CoverageCard = ({ roles, functions, scheduleBlocks, weekStart, scal
                     color={role.color || '#60a5fa'}
                     maxValue={rowMax}
                     valueFromBlock={(block) => block.byFunction[fn.id] || 0}
-                    onSelect={(bar) => {
-                      const source = bar.sourceBlocks[Math.floor(bar.sourceBlocks.length / 2)] ?? bar.sourceBlocks[0];
-                      showPopover(bar, fn.nombre, source.byFunction[fn.id] || 0, roleById.get(fn.roleId)?.nombre);
-                    }}
                   />
                 </div>
               );
             }))}
           </div>
         </>
-      )}
-
-
-      {popover && (
-        <button className="coverage-popover" onClick={() => setPopover(null)}>
-          <strong>{popover.title}</strong>
-          <span>{popover.details}</span>
-        </button>
       )}
     </section>
   );
