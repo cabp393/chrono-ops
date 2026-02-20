@@ -29,8 +29,8 @@ export const HeaderBar = ({
         <div className="brand">ShiftBoard</div>
         <div className="segmented nav-tabs">
           <button className={view === 'week' ? 'active' : ''} onClick={() => onChangeView('week')}>Semana</button>
-          <button className={view === 'schedules' ? 'active' : ''} onClick={() => onChangeView('schedules')}>Horarios</button>
-          <button className={view === 'personal' ? 'active' : ''} onClick={() => onChangeView('personal')}>Personal</button>
+          <button className={view === 'schedules' ? 'active' : ''} onClick={() => onChangeView('schedules')}>Personal</button>
+          <button className={view === 'personal' ? 'active' : ''} onClick={() => onChangeView('personal')}>Ajustes</button>
         </div>
       </div>
       <div className="header-actions">
