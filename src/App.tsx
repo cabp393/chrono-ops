@@ -1,3 +1,4 @@
+import { Github } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CoverageCard } from './components/CoverageCard';
 import { FiltersPanel } from './components/FiltersPanel';
@@ -110,6 +111,14 @@ function App() {
       /> : null}
 
       <FiltersPanel roles={state.roles} functions={state.functions} people={state.people} appliedState={appliedState} open={filtersOpen} onClose={() => setFiltersOpen(false)} onApply={(nextState) => { setAppliedState(nextState); saveViewStatePreference(nextState); }} onReset={() => { setAppliedState(DEFAULT_VIEW_STATE); saveViewStatePreference(DEFAULT_VIEW_STATE); }} />
+
+      <footer className="app-footer">
+        <p className="app-footer-brand">ShiftBoard</p>
+        <a className="app-footer-link" href="https://github.com" target="_blank" rel="noreferrer">
+          <Github size={14} />
+          Repositorio
+        </a>
+      </footer>
     </div>
   );
 }

@@ -45,6 +45,30 @@ export const WeekGrid = ({
 
   const blocksById = useMemo(() => new Map(blocks.map((block) => [block.id, block])), [blocks]);
 
+  const dayColumnWidths = useMemo(() => dayShifts.map((segments) => {
+    if (segments.length === 0) return 180;
+    const sorted = [...segments].sort((a, b) => {
+      const startDiff = new Date(a.segStartISO).getTime() - new Date(b.segStartISO).getTime();
+      if (startDiff !== 0) return startDiff;
+      return new Date(a.segEndISO).getTime() - new Date(b.segEndISO).getTime();
+    });
+
+    const columnEnds: number[] = [];
+    sorted.forEach((segment) => {
+      const start = new Date(segment.segStartISO).getTime();
+      const end = new Date(segment.segEndISO).getTime();
+      let columnIndex = columnEnds.findIndex((lastEnd) => start >= lastEnd);
+      if (columnIndex === -1) {
+        columnIndex = columnEnds.length;
+        columnEnds.push(end);
+      } else {
+        columnEnds[columnIndex] = end;
+      }
+    });
+
+    return Math.max(columnEnds.length * 26, 180);
+  }), [dayShifts]);
+
   useEffect(() => {
     if (!focusBlock || !gridRef.current) return;
     gridRef.current.scrollTo({ top: focusBlock.blockIndex * blockHeight - 120, behavior: 'smooth' });
@@ -52,7 +76,7 @@ export const WeekGrid = ({
 
   return (
     <section className="card week-grid-card" ref={gridRef}>
-      <div className="week-grid-layout" style={{ gridTemplateColumns: '78px repeat(7, minmax(180px, 1fr))' }}>
+      <div className="week-grid-layout" style={{ gridTemplateColumns: `78px ${dayColumnWidths.map((width) => `${width}px`).join(' ')}` }}>
         <div className="sticky time-corner" />
         {Array.from({ length: 7 }, (_, i) => {
           const date = addDays(weekStart, i);

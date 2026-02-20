@@ -133,7 +133,7 @@ export const PersonalPage = ({ roles, functions, templates, onSaveTemplates, onC
               if (modal.type === 'create-function' && nameDraft.trim()) onCreateFunction(modal.roleId, nameDraft.trim());
               if (modal.type === 'edit-function' && nameDraft.trim()) onRenameFunction(modal.functionId, nameDraft.trim());
               if (modal.type === 'delete-role' && !onDeleteRole(modal.roleId)) window.alert('Reasigna trabajadores antes de eliminar');
-              if (modal.type === 'delete-function' && !onDeleteFunction(modal.functionId)) window.alert('La función está en uso en Horarios.');
+              if (modal.type === 'delete-function' && !onDeleteFunction(modal.functionId)) window.alert('La función está en uso en Personal.');
               setModal(null);
             }} aria-label="Confirmar" title="Confirmar">
               {modal.type.includes('delete') ? <Trash2 size={14} /> : <Check size={14} />}
