@@ -56,6 +56,9 @@ export type AppliedFilters = {
   selectedPersonId: string | null;
   roleIds: string[];
   functionIds: string[];
+  dayKeys: ScheduleDayKey[];
+  timeRangeStart: string;
+  timeRangeEnd: string;
 };
 
 export type AppliedViewState = AppliedFilters & {
