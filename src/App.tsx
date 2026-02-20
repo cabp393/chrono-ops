@@ -148,6 +148,10 @@ function App() {
         personFunctionWeeks={state.personFunctionWeeks}
         overrides={state.overrides}
         onChange={(next) => { const merged = saveAll({ ...state, ...next }); setState(merged); }}
+        onImportWeekConfirm={(next) => {
+          const merged = saveAll({ ...state, ...next });
+          setState(merged);
+        }}
         onCreatePerson={({ nombre, roleId }) => {
           const next = saveAll({ ...state, people: [...state.people, { id: crypto.randomUUID(), nombre, roleId }] });
           setState(next);

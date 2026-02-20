@@ -497,11 +497,56 @@ button.subtle-primary:hover {
 }
 
 .schedule-footer-create {
-  justify-content: flex-end;
+  justify-content: space-between;
 }
 
 .schedule-footer-create .primary {
   padding-inline: 12px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.import-preview-modal {
+  width: min(620px, 94vw);
+  max-height: 86vh;
+  overflow: auto;
+}
+
+.import-preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.import-preview-grid p {
+  margin: 0;
+}
+
+.import-preview-block {
+  display: grid;
+  gap: 4px;
+}
+
+.import-preview-block ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.schedule-toast {
+  position: fixed;
+  right: 14px;
+  bottom: calc(70px + env(safe-area-inset-bottom));
+  background: #0f172a;
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 10px;
+  z-index: 90;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.25);
 }
 
 .schedule-worker-card {
