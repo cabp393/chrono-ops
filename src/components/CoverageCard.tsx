@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Undo2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { Function, Person, Role, ScheduleBlock, TimeScale } from '../types';
 
@@ -35,6 +35,7 @@ type Props = {
   scheduleBlocks: ScheduleBlock[];
   weekStart: Date;
   scale: TimeScale;
+  selectedRoleIds: string[];
   selectedFunctionIds: string[];
   onToggleFunctionFilter: (functionId: string) => void;
   onClearFunctionFilters: () => void;
@@ -65,7 +66,7 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelectBlock }: 
   );
 };
 
-export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, selectedFunctionIds, onToggleFunctionFilter, onClearFunctionFilters }: Props) => {
+export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, selectedRoleIds, selectedFunctionIds, onToggleFunctionFilter, onClearFunctionFilters }: Props) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [selectedHeatbar, setSelectedHeatbar] = useState<SelectedHeatbar | null>(null);
 
@@ -231,7 +232,7 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
         <h3>Cobertura</h3>
         <div className="coverage-head-actions">
           {selectedFunctionIds.length > 0 ? <button type="button" className="icon-btn" onClick={onClearFunctionFilters} aria-label="Quitar filtro de función">
-            <X size={14} />
+            <Undo2 size={14} />
           </button> : null}
           <button
             type="button"
@@ -245,7 +246,9 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
       </div>
 
       {!isCollapsed ? <div className="coverage-rows">
-        {roles.flatMap((role) => (groupedFunctions[role.id] || []).map((fn) => {
+        {roles.flatMap((role) => {
+          if (selectedRoleIds.length > 0 && !selectedRoleIds.includes(role.id)) return [];
+          return (groupedFunctions[role.id] || []).map((fn) => {
           if (selectedFunctionIds.length > 0 && !selectedFunctionIds.includes(fn.id)) return null;
           const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
           const isSelected = selectedFunctionIds.includes(fn.id);
@@ -266,7 +269,8 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
               />
             </div>
           );
-        }))}
+          });
+        })}
       </div> : null}
 
       {selectedHeatbar && selectedRange ? <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => setSelectedHeatbar(null)}>

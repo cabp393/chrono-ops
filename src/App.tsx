@@ -151,7 +151,7 @@ function App() {
       />
 
       {view === 'week' ? (
-        <main className="dashboard-layout"><section className="main-column"><CoverageCard roles={state.roles} functions={state.functions} people={state.people} scheduleBlocks={weekScheduleBlocks} weekStart={weekStart} scale={appliedState.timeScale} selectedFunctionIds={appliedState.functionIds} onToggleFunctionFilter={toggleFunctionFilter} onClearFunctionFilters={clearFunctionFilters} /><WeekGrid weekStart={weekStart} blocks={weekScheduleBlocks} roles={state.roles} scale={appliedState.timeScale} coverageTotals={Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]))} focusBlock={focusBlock} shiftLabelMode={appliedState.shiftLabelMode} /></section></main>
+        <main className="dashboard-layout"><section className="main-column"><CoverageCard roles={state.roles} functions={state.functions} people={state.people} scheduleBlocks={weekScheduleBlocks} weekStart={weekStart} scale={appliedState.timeScale} selectedRoleIds={appliedState.roleIds} selectedFunctionIds={appliedState.functionIds} onToggleFunctionFilter={toggleFunctionFilter} onClearFunctionFilters={clearFunctionFilters} /><WeekGrid weekStart={weekStart} blocks={weekScheduleBlocks} roles={state.roles} scale={appliedState.timeScale} coverageTotals={Object.fromEntries(coverage.map((day) => [day.dayKey, day.blocks.map((block) => block.total)]))} focusBlock={focusBlock} shiftLabelMode={appliedState.shiftLabelMode} /></section></main>
       ) : null}
 
       {view === 'schedules' ? <SchedulesPage
