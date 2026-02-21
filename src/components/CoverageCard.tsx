@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Undo2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { Function, Person, Role, ScheduleBlock, TimeScale } from '../types';
 
@@ -14,7 +14,6 @@ type WeekBlock = {
 };
 
 type SelectedHeatbar = {
-  mode: 'rol' | 'funcion';
   keyId: string;
   dayIndex: number;
   startMin: number;
@@ -36,7 +35,10 @@ type Props = {
   scheduleBlocks: ScheduleBlock[];
   weekStart: Date;
   scale: TimeScale;
-  activePeople: number;
+  selectedRoleIds: string[];
+  selectedFunctionIds: string[];
+  onToggleFunctionFilter: (functionId: string) => void;
+  onClearFunctionFilters: () => void;
 };
 
 const MINUTES_IN_DAY = 24 * 60;
@@ -64,8 +66,8 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelectBlock }: 
   );
 };
 
-export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, activePeople }: Props) => {
-  const [view, setView] = useState<'role' | 'function'>('role');
+export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, selectedRoleIds, selectedFunctionIds, onToggleFunctionFilter, onClearFunctionFilters }: Props) => {
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [selectedHeatbar, setSelectedHeatbar] = useState<SelectedHeatbar | null>(null);
 
   useEffect(() => {
@@ -146,6 +148,15 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
   const peopleById = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
   const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
   const functionsById = useMemo(() => new Map(functions.map((fn) => [fn.id, fn])), [functions]);
+  const functionWorkerCount = useMemo(() => {
+    const byFunction = new Map<string, Set<string>>();
+    scheduleBlocks.forEach((block) => {
+      const existing = byFunction.get(block.functionId) ?? new Set<string>();
+      existing.add(block.personId);
+      byFunction.set(block.functionId, existing);
+    });
+    return byFunction;
+  }, [scheduleBlocks]);
 
   const blocksPerDay = MINUTES_IN_DAY / scale;
 
@@ -164,10 +175,7 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
     const workersById = new Map<string, { person: Person; functionNames: Set<string> }>();
 
     scheduleBlocks.forEach((block) => {
-      const matchesMode = selectedHeatbar.mode === 'rol'
-        ? block.roleId === selectedHeatbar.keyId
-        : block.functionId === selectedHeatbar.keyId;
-      if (!matchesMode) return;
+      if (block.functionId !== selectedHeatbar.keyId) return;
 
       const start = new Date(block.startISO).getTime();
       const end = new Date(block.endISO).getTime();
@@ -189,10 +197,8 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
 
   const selectedLabel = useMemo(() => {
     if (!selectedHeatbar) return '';
-    return selectedHeatbar.mode === 'rol'
-      ? (rolesById.get(selectedHeatbar.keyId)?.nombre ?? '')
-      : (functionsById.get(selectedHeatbar.keyId)?.nombre ?? '');
-  }, [functionsById, rolesById, selectedHeatbar]);
+    return functionsById.get(selectedHeatbar.keyId)?.nombre ?? '';
+  }, [functionsById, selectedHeatbar]);
 
   const selectedLinear = selectedHeatbar ? (selectedHeatbar.dayIndex * blocksPerDay) + (selectedHeatbar.startMin / scale) : -1;
   const maxLinear = (7 * blocksPerDay) - 1;
@@ -223,64 +229,56 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
   return (
     <section className="card coverage-card">
       <div className="coverage-head">
-        <div>
-          <h3>Resumen de cobertura</h3>
-          <p>{activePeople} personas activas</p>
-        </div>
-        <div className="segmented">
-          <button className={view === 'role' ? 'active' : ''} onClick={() => setView('role')}>Rol</button>
-          <button className={view === 'function' ? 'active' : ''} onClick={() => setView('function')}>Función</button>
+        <h3>Cobertura</h3>
+        <div className="coverage-head-actions">
+          {selectedFunctionIds.length > 0 ? <button type="button" className="icon-btn" onClick={onClearFunctionFilters} aria-label="Quitar filtro de función">
+            <Undo2 size={14} />
+          </button> : null}
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setIsCollapsed((current) => !current)}
+            aria-label={isCollapsed ? 'Expandir cobertura' : 'Colapsar cobertura'}
+          >
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
         </div>
       </div>
 
-      {view === 'role' ? (
-        <>
-          <div className="coverage-rows">
-            {roles.map((role) => {
-              const rowMax = Math.max(...weekBlocks.map((block) => block.byRole[role.id] || 0), 1);
-              return (
-                <div key={role.id} className="coverage-row">
-                  <p className="coverage-mini-title">{role.nombre}</p>
-                  <HeatbarRow
-                    blocks={weekBlocks}
-                    color={role.color || '#60a5fa'}
-                    maxValue={rowMax}
-                    valueFromBlock={(block) => block.byRole[role.id] || 0}
-                    onSelectBlock={(block) => setSelectedHeatbar({ mode: 'rol', keyId: role.id, dayIndex: block.dayIndex, startMin: block.blockIndex * scale, endMin: (block.blockIndex + 1) * scale })}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="coverage-rows">
-            {roles.flatMap((role) => (groupedFunctions[role.id] || []).map((fn) => {
-              const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
-              return (
-                <div key={fn.id} className="coverage-row">
-                  <p className="coverage-mini-title">{fn.nombre}</p>
-                  <HeatbarRow
-                    blocks={weekBlocks}
-                    color={role.color || '#60a5fa'}
-                    maxValue={rowMax}
-                    valueFromBlock={(block) => block.byFunction[fn.id] || 0}
-                    onSelectBlock={(block) => setSelectedHeatbar({ mode: 'funcion', keyId: fn.id, dayIndex: block.dayIndex, startMin: block.blockIndex * scale, endMin: (block.blockIndex + 1) * scale })}
-                  />
-                </div>
-              );
-            }))}
-          </div>
-        </>
-      )}
+      {!isCollapsed ? <div className="coverage-rows">
+        {roles.flatMap((role) => {
+          if (selectedRoleIds.length > 0 && !selectedRoleIds.includes(role.id)) return [];
+          return (groupedFunctions[role.id] || []).map((fn) => {
+          if (selectedFunctionIds.length > 0 && !selectedFunctionIds.includes(fn.id)) return null;
+          const rowMax = Math.max(...weekBlocks.map((block) => block.byFunction[fn.id] || 0), 1);
+          const isSelected = selectedFunctionIds.includes(fn.id);
+          return (
+            <div key={fn.id} className="coverage-row">
+              <div className="coverage-mini-head">
+                <button type="button" className={`coverage-mini-title ${isSelected ? 'active' : ''}`} onClick={() => onToggleFunctionFilter(fn.id)}>
+                  {fn.nombre}
+                </button>
+                <span className="coverage-mini-count">{functionWorkerCount.get(fn.id)?.size ?? 0}</span>
+              </div>
+              <HeatbarRow
+                blocks={weekBlocks}
+                color={role.color || '#60a5fa'}
+                maxValue={rowMax}
+                valueFromBlock={(block) => block.byFunction[fn.id] || 0}
+                onSelectBlock={(block) => setSelectedHeatbar({ keyId: fn.id, dayIndex: block.dayIndex, startMin: block.blockIndex * scale, endMin: (block.blockIndex + 1) * scale })}
+              />
+            </div>
+          );
+          });
+        })}
+      </div> : null}
 
       {selectedHeatbar && selectedRange ? <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => setSelectedHeatbar(null)}>
         <section className="modal coverage-detail-modal" onClick={(event) => event.stopPropagation()}>
           <div className="coverage-detail-head">
             <div>
               <h3>{selectedTitle}</h3>
-              <p>{selectedHeatbar.mode === 'funcion' ? 'Función' : 'Rol'}: {selectedLabel}</p>
+              <p>Función: {selectedLabel}</p>
             </div>
             <div className="coverage-detail-actions">
               <button type="button" className="icon-btn" onClick={() => navigateBlock(-1)} disabled={selectedLinear <= 0} aria-label="Bloque anterior"><ChevronLeft size={14} /></button>
