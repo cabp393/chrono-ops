@@ -37,6 +37,7 @@ type Props = {
   scale: TimeScale;
   selectedFunctionIds: string[];
   onToggleFunctionFilter: (functionId: string) => void;
+  onClearFunctionFilters: () => void;
 };
 
 const MINUTES_IN_DAY = 24 * 60;
@@ -64,7 +65,7 @@ const HeatbarRow = ({ blocks, color, maxValue, valueFromBlock, onSelectBlock }: 
   );
 };
 
-export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, selectedFunctionIds, onToggleFunctionFilter }: Props) => {
+export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekStart, scale, selectedFunctionIds, onToggleFunctionFilter, onClearFunctionFilters }: Props) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [selectedHeatbar, setSelectedHeatbar] = useState<SelectedHeatbar | null>(null);
 
@@ -228,14 +229,19 @@ export const CoverageCard = ({ roles, functions, people, scheduleBlocks, weekSta
     <section className="card coverage-card">
       <div className="coverage-head">
         <h3>Cobertura</h3>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setIsCollapsed((current) => !current)}
-          aria-label={isCollapsed ? 'Expandir cobertura' : 'Colapsar cobertura'}
-        >
-          {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-        </button>
+        <div className="coverage-head-actions">
+          {selectedFunctionIds.length > 0 ? <button type="button" className="icon-btn" onClick={onClearFunctionFilters} aria-label="Quitar filtro de función">
+            <X size={14} />
+          </button> : null}
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setIsCollapsed((current) => !current)}
+            aria-label={isCollapsed ? 'Expandir cobertura' : 'Colapsar cobertura'}
+          >
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+        </div>
       </div>
 
       {!isCollapsed ? <div className="coverage-rows">
