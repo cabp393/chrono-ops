@@ -36,7 +36,7 @@ export const HeaderBar = ({
         </div>
       </div>
       <div className="header-actions">
-        {view === 'week' ? (
+        {view === 'week' || view === 'schedules' ? (
           <button className="icon-btn ghost filter-toggle-btn" onClick={onOpenFilters} aria-label="Abrir filtros" title="Filtros">
             <SlidersHorizontal size={15} />
             {hasActiveFilters ? <span className="filter-active-dot" aria-hidden="true" /> : null}
