@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { TIME_SCALE_OPTIONS, scaleLabel } from '../lib/timeScale';
-import type { AppliedViewState, Function, Person, Role, ShiftLabelMode, TimeScale } from '../types';
+import { weekStartISOFromDate } from '../lib/storage';
+import type { AppliedViewState, Function, Person, PersonWeekPlan, Role, ScheduleTemplate, ShiftLabelMode, TimeScale } from '../types';
 import { FilterFooter } from './filters/FilterFooter';
 import { FilterPill } from './filters/FilterPill';
 import { FilterSection } from './filters/FilterSection';
@@ -9,21 +10,24 @@ import { TimeInput24 } from './TimeInput24';
 type Props = {
   roles: Role[];
   functions: Function[];
+  templates: ScheduleTemplate[];
   people: Person[];
+  personWeekPlans: PersonWeekPlan[];
+  weekStart: Date;
   appliedState: AppliedViewState;
   open: boolean;
   onClose: () => void;
   onApply: (nextState: AppliedViewState) => void;
-  onReset: () => void;
+  onReset: (nextState: AppliedViewState) => void;
 };
 
-const DEFAULT_VIEW_STATE: AppliedViewState = {
-  timeScale: 60,
-  shiftLabelMode: 'function',
+const DEFAULT_FILTER_STATE = {
   searchText: '',
   selectedPersonId: null,
   roleIds: [],
   functionIds: [],
+  templateIds: [],
+  includeWithoutTemplate: false,
   dayKeys: [],
   timeRangeStart: '',
   timeRangeEnd: ''
@@ -44,7 +48,10 @@ const norm = (value: string) => value.trim().toLowerCase();
 export const FiltersPanel = ({
   roles,
   functions,
+  templates,
   people,
+  personWeekPlans,
+  weekStart,
   appliedState,
   open,
   onClose,
@@ -63,6 +70,11 @@ export const FiltersPanel = ({
   }, [open]);
 
   const rolesById = useMemo(() => new Map(roles.map((role) => [role.id, role])), [roles]);
+  const weekStartISO = weekStartISOFromDate(weekStart);
+  const weekPlanByPerson = useMemo(
+    () => new Map(personWeekPlans.filter((item) => item.weekStartISO === weekStartISO).map((item) => [item.personId, item.templateId])),
+    [personWeekPlans, weekStartISO]
+  );
 
   const draftSearch = norm(draftState.searchText);
   const roleScope = draftState.roleIds.length > 0 ? new Set(draftState.roleIds) : null;
@@ -114,6 +126,20 @@ export const FiltersPanel = ({
     return counts;
   }, [peopleMatchingSearch, functions]);
 
+  const templateCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let withoutTemplate = 0;
+    peopleMatchingSearch.forEach((person) => {
+      const templateId = weekPlanByPerson.get(person.id) ?? null;
+      if (!templateId) {
+        withoutTemplate += 1;
+        return;
+      }
+      counts[templateId] = (counts[templateId] || 0) + 1;
+    });
+    return { counts, withoutTemplate };
+  }, [peopleMatchingSearch, weekPlanByPerson]);
+
   const visibleRoleIds = roleScope ? Array.from(roleScope) : roles.map((role) => role.id);
   const roleRank = useMemo(() => new Map(roles.map((role, index) => [role.id, index])), [roles]);
   const visibleFunctions = useMemo(() => (
@@ -138,6 +164,13 @@ export const FiltersPanel = ({
     setDraftState((prev) => ({
       ...prev,
       functionIds: prev.functionIds.includes(id) ? prev.functionIds.filter((item) => item !== id) : [...prev.functionIds, id]
+    }));
+  };
+
+  const toggleTemplate = (id: string) => {
+    setDraftState((prev) => ({
+      ...prev,
+      templateIds: prev.templateIds.includes(id) ? prev.templateIds.filter((item) => item !== id) : [...prev.templateIds, id]
     }));
   };
 
@@ -241,6 +274,31 @@ export const FiltersPanel = ({
                 </div>
 
                 <div className="sub-control">
+                  <p>Plantilla de turno</p>
+                  <div className="pill-grid">
+                    {templates.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        className={`filter-pill ${draftState.templateIds.includes(template.id) ? 'active' : ''}`}
+                        onClick={() => toggleTemplate(template.id)}
+                      >
+                        <span>{template.name}</span>
+                        <small>{templateCounts.counts[template.id] || 0}</small>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={`filter-pill ${draftState.includeWithoutTemplate ? 'active' : ''}`}
+                      onClick={() => setDraftState((prev) => ({ ...prev, includeWithoutTemplate: !prev.includeWithoutTemplate }))}
+                    >
+                      <span>Sin plantilla</span>
+                      <small>{templateCounts.withoutTemplate}</small>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="sub-control">
                   <p>Día</p>
                   <div className="pill-grid">
                     {DAY_FILTER_OPTIONS.map((day) => {
@@ -308,8 +366,12 @@ export const FiltersPanel = ({
             onClose();
           }}
           onReset={() => {
-            setDraftState(DEFAULT_VIEW_STATE);
-            onReset();
+            const nextState: AppliedViewState = {
+              ...draftState,
+              ...DEFAULT_FILTER_STATE
+            };
+            setDraftState(nextState);
+            onReset(nextState);
             onClose();
           }}
         />

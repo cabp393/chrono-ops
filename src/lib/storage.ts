@@ -243,6 +243,8 @@ const normalizeViewState = (value: Partial<AppliedViewState> | null | undefined)
   selectedPersonId: typeof value?.selectedPersonId === 'string' ? value.selectedPersonId : null,
   roleIds: Array.isArray(value?.roleIds) ? value.roleIds.filter((item): item is string => typeof item === 'string') : [],
   functionIds: Array.isArray(value?.functionIds) ? value.functionIds.filter((item): item is string => typeof item === 'string') : [],
+  templateIds: Array.isArray(value?.templateIds) ? value.templateIds.filter((item): item is string => typeof item === 'string') : [],
+  includeWithoutTemplate: value?.includeWithoutTemplate === true,
   dayKeys: Array.isArray(value?.dayKeys)
     ? value.dayKeys.filter((item): item is AppliedViewState['dayKeys'][number] => ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].includes(item))
     : [],

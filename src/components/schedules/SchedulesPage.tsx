@@ -72,6 +72,14 @@ export const SchedulesPage = ({ people, roles, functions, templates, personWeekP
     setPersonDraft(selected ? { nombre: selected.nombre, roleId: selected.roleId } : null);
   }, [selectedPersonId, people]);
 
+
+  useEffect(() => {
+    if (selectedPersonId && !people.some((item) => item.id === selectedPersonId)) {
+      setSelectedPersonId(null);
+      setPersonDraft(null);
+    }
+  }, [people, selectedPersonId]);
+
   useEffect(() => {
     if (!toastMessage) return;
     const timer = window.setTimeout(() => setToastMessage(null), 2800);

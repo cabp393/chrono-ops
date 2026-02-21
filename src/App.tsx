@@ -15,18 +15,6 @@ import { clearIncompatibleWeekFunction, loadAll, loadViewStatePreference, remove
 import type { AppliedViewState } from './types';
 
 const todayWeekStart = startOfWeekMonday(new Date());
-const DEFAULT_VIEW_STATE: AppliedViewState = {
-  timeScale: 60,
-  shiftLabelMode: 'function',
-  searchText: '',
-  selectedPersonId: null,
-  roleIds: [],
-  functionIds: [],
-  dayKeys: [],
-  timeRangeStart: '',
-  timeRangeEnd: ''
-};
-
 const MINUTES_IN_DAY = 24 * 60;
 
 const timeToMinutes = (value: string): number | null => {
@@ -59,12 +47,11 @@ function App() {
   const focusBlock = null;
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const filteredPersonIds = useMemo(() => new Set(state.people.filter((person) => {
-    const roleOk = appliedState.roleIds.length === 0 || appliedState.roleIds.includes(person.roleId);
-    const selectedPersonOk = !appliedState.selectedPersonId || person.id === appliedState.selectedPersonId;
-    const searchOk = !appliedState.searchText.trim() || person.nombre.toLowerCase().includes(appliedState.searchText.trim().toLowerCase());
-    return roleOk && selectedPersonOk && searchOk;
-  }).map((person) => person.id)), [state.people, appliedState]);
+  const weekStartISO = weekStartISOFromDate(weekStart);
+  const weekPlanByPerson = useMemo(
+    () => new Map(state.personWeekPlans.filter((item) => item.weekStartISO === weekStartISO).map((item) => [item.personId, item.templateId])),
+    [state.personWeekPlans, weekStartISO]
+  );
 
   const rangeIntervals = useMemo(
     () => buildRangeIntervals(appliedState.timeRangeStart, appliedState.timeRangeEnd),
@@ -72,7 +59,7 @@ function App() {
   );
   const selectedDays = useMemo(() => new Set(appliedState.dayKeys), [appliedState.dayKeys]);
 
-  const weekScheduleBlocks = useMemo(() => buildWeekScheduleBlocks(
+  const baseWeekScheduleBlocks = useMemo(() => buildWeekScheduleBlocks(
     weekStart,
     state.people,
     state.functions,
@@ -81,10 +68,9 @@ function App() {
     state.personFunctionWeeks,
     state.overrides,
     appliedState.shiftLabelMode
-  ).filter((block) => {
-    if (!filteredPersonIds.has(block.personId)) return false;
-    if (appliedState.functionIds.length > 0 && !appliedState.functionIds.includes(block.functionId)) return false;
+  ), [weekStart, state, appliedState.shiftLabelMode]);
 
+  const blockMatchesDayAndRange = (block: (typeof baseWeekScheduleBlocks)[number]) => {
     const segments = splitShiftByDay(block);
 
     if (selectedDays.size > 0) {
@@ -109,13 +95,41 @@ function App() {
     }
 
     return true;
-  }), [weekStart, state, appliedState.shiftLabelMode, appliedState.functionIds, filteredPersonIds, selectedDays, rangeIntervals]);
+  };
+
+  const personIdsMatchingBlockFilters = useMemo(() => new Set(
+    baseWeekScheduleBlocks
+      .filter((block) => (appliedState.functionIds.length === 0 || appliedState.functionIds.includes(block.functionId)) && blockMatchesDayAndRange(block))
+      .map((block) => block.personId)
+  ), [baseWeekScheduleBlocks, appliedState.functionIds, selectedDays, rangeIntervals]);
+
+  const requiresBlockMatch = appliedState.functionIds.length > 0 || selectedDays.size > 0 || rangeIntervals.length > 0;
+
+  const filteredPersonIds = useMemo(() => new Set(state.people.filter((person) => {
+    const roleOk = appliedState.roleIds.length === 0 || appliedState.roleIds.includes(person.roleId);
+    const selectedPersonOk = !appliedState.selectedPersonId || person.id === appliedState.selectedPersonId;
+    const searchOk = !appliedState.searchText.trim() || person.nombre.toLowerCase().includes(appliedState.searchText.trim().toLowerCase());
+    const assignedTemplateId = weekPlanByPerson.get(person.id) ?? null;
+    const templateOk = (appliedState.templateIds.length === 0 && !appliedState.includeWithoutTemplate)
+      || (assignedTemplateId !== null && appliedState.templateIds.includes(assignedTemplateId))
+      || (assignedTemplateId === null && appliedState.includeWithoutTemplate);
+    const blockOk = !requiresBlockMatch || personIdsMatchingBlockFilters.has(person.id);
+    return roleOk && selectedPersonOk && searchOk && templateOk && blockOk;
+  }).map((person) => person.id)), [state.people, appliedState, weekPlanByPerson, requiresBlockMatch, personIdsMatchingBlockFilters]);
+
+  const weekScheduleBlocks = useMemo(() => baseWeekScheduleBlocks.filter((block) => {
+    if (!filteredPersonIds.has(block.personId)) return false;
+    if (appliedState.functionIds.length > 0 && !appliedState.functionIds.includes(block.functionId)) return false;
+    return blockMatchesDayAndRange(block);
+  }), [baseWeekScheduleBlocks, filteredPersonIds, appliedState.functionIds, selectedDays, rangeIntervals]);
 
   const coverage = useMemo(() => calculateCoverage(weekStart, weekScheduleBlocks, state.roles, appliedState.timeScale, (block) => block.roleId), [weekStart, weekScheduleBlocks, state.roles, appliedState.timeScale]);
   const hasActiveFilters = appliedState.searchText.trim().length > 0
     || !!appliedState.selectedPersonId
     || appliedState.roleIds.length > 0
     || appliedState.functionIds.length > 0
+    || appliedState.templateIds.length > 0
+    || appliedState.includeWithoutTemplate
     || appliedState.dayKeys.length > 0
     || !!appliedState.timeRangeStart
     || !!appliedState.timeRangeEnd;
@@ -156,7 +170,7 @@ function App() {
 
       {view === 'schedules' ? <SchedulesPage
         weekStart={weekStart}
-        people={state.people}
+        people={state.people.filter((person) => filteredPersonIds.has(person.id))}
         roles={state.roles}
         functions={state.functions}
         templates={state.templates}
@@ -173,9 +187,8 @@ function App() {
           setState(next);
         }}
         onUpdatePerson={(person) => {
-          const weekISO = weekStartISOFromDate(new Date());
           const validFunctionIds = new Set(state.functions.filter((fn) => fn.roleId === person.roleId).map((fn) => fn.id));
-          const next = saveAll({ ...state, people: state.people.map((row) => row.id === person.id ? person : row), personFunctionWeeks: clearIncompatibleWeekFunction(state.personFunctionWeeks, person.id, weekISO, validFunctionIds) });
+          const next = saveAll({ ...state, people: state.people.map((row) => row.id === person.id ? person : row), personFunctionWeeks: clearIncompatibleWeekFunction(state.personFunctionWeeks, person.id, weekStartISO, validFunctionIds) });
           setState(next);
         }}
         onDeletePerson={(personId) => setState(saveAll(removePersonCascade(state, personId)))}
@@ -208,7 +221,19 @@ function App() {
         }}
       /> : null}
 
-      <FiltersPanel roles={state.roles} functions={state.functions} people={state.people} appliedState={appliedState} open={filtersOpen} onClose={() => setFiltersOpen(false)} onApply={(nextState) => { setAppliedState(nextState); saveViewStatePreference(nextState); }} onReset={() => { setAppliedState(DEFAULT_VIEW_STATE); saveViewStatePreference(DEFAULT_VIEW_STATE); }} />
+      <FiltersPanel
+        roles={state.roles}
+        functions={state.functions}
+        templates={state.templates}
+        people={state.people}
+        personWeekPlans={state.personWeekPlans}
+        weekStart={weekStart}
+        appliedState={appliedState}
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onApply={(nextState) => { setAppliedState(nextState); saveViewStatePreference(nextState); }}
+        onReset={(nextState) => { setAppliedState(nextState); saveViewStatePreference(nextState); }}
+      />
 
       <footer className="app-footer">
         <a className="app-footer-pill" href="https://github.com/cabp393/chrono-ops/" target="_blank" rel="noreferrer">
